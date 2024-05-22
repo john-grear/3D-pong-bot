@@ -1,0 +1,2 @@
+﻿# 3D-pong-bot
+Creating 3D pong in Unity, then adding the ML Agent plugin to it to make it learn to play the game. Planning on adding walls and other features to make the game more complicated for the agent to learn around after initial testing succeeds.
