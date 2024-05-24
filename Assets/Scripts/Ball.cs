@@ -11,9 +11,8 @@ public class Ball : MonoBehaviour
     private int _paddleLayer;
     private int _goalLineLayer;
     private int _wallLayer;
-    private PaddleAgent _whoHitLast;
     private Vector3 _lastVelocity;
-    
+
     /// <inheritdoc cref="Start"/>
     /// <remarks>
     /// Sets up starting values.
@@ -31,32 +30,52 @@ public class Ball : MonoBehaviour
         Launch();
     }
 
+    // /// <inheritdoc cref="FixedUpdate"/>
+    // /// <remarks>
+    // /// </remarks>
+    // /// <exception cref="NotImplementedException"></exception>
+    // private void FixedUpdate()
+    // {
+    //     // Ensure ball never slows down and maintains correct direction
+    //     var halfSpeed = speed / 2;
+    //     if (_rigidbody.velocity.x > -halfSpeed && _rigidbody.velocity.x < halfSpeed)
+    //     {
+    //         var direction = _lastVelocity.normalized.x * -1;
+    //         _rigidbody.velocity.x = Random.Range(direction * speed, direction * speed * 2);
+    //     }
+    // }
+
     /// <summary>
     /// Launches the ball with a random starting vector and angle.
     /// </summary>
     private void Launch()
     {
-        var ballVector = ChooseStartVector();
-        _rigidbody.velocity = AddRandomAngle(ballVector);
+        _rigidbody.velocity = ChooseStartVector();
         SaveLastVelocity();
     }
 
     /// <summary>
-    /// Randomly generated a vector going left or right.
+    /// Randomly generates a starting vector for the ball.
     /// </summary>
     /// <returns>
-    /// Vector either going left or right.
+    /// Vector either going left or right with a random angle added.
     /// </returns>
     private Vector3 ChooseStartVector()
     {
-        return Random.Range(0, 1) == 0 ? Vector3.left * speed : Vector3.right * speed;
+        // Choose left or right
+        var startVector = Random.Range(0, 2) == 0 ? Vector3.left * speed : Vector3.right * speed;
+
+        // Add random angle
+        startVector += new Vector3(0, 0, Random.Range(-2f, 2f));
+
+        return startVector;
     }
 
     /// <inheritdoc cref="OnCollisionEnter"/>
     /// <remarks>
     /// Checks if collision is with the goal line to add a point to the opposing player
     /// and teleport the ball back to the starting position. If the ball collides with
-    /// a wall or a paddle, the ball bounces away from it with varying speed and angle.
+    /// a wall or a paddle, the ball bounces off of it.
     /// </remarks>
     /// <param name="other">
     /// Collision object that is used to determine what happens with the ball.
@@ -68,91 +87,70 @@ public class Ball : MonoBehaviour
         // Check colliding with Goal Line
         if (collidingLayer.Equals(_goalLineLayer))
         {
+            // Gets the opposing player to score a point for them
+            var player = other.gameObject.GetComponent<Goal>().opposingPlayer.GetComponent<PaddleAgent>();
+
             // Give point
-            gameManager.AddPoint(_whoHitLast);
-            
+            gameManager.AddPoint(player);
+
             // If in real game, set timer before teleporting
 
             // Teleport back to starting location
             transform.position = _startingPosition;
-            
+            _rigidbody.velocity = Vector3.zero;
+
+            // Check game over
+            if (gameManager.IsGameOver())
+            {
+                return;
+            }
+
             // Launch ball again
             Launch();
+            return;
         }
-        else if (collidingLayer.Equals(_paddleLayer))
+
+        // Reflect the velocity vector around the normal
+        var normal = other.GetContact(0).normal;
+        var reflectedVelocity = Vector3.Reflect(_rigidbody.velocity, normal);
+
+        // Ensure ball never slows down and maintains correct direction
+        var slowSpeed = speed * 0.9;
+        if (Mathf.Abs(reflectedVelocity.x) < slowSpeed)
         {
-            _whoHitLast = other.gameObject.GetComponent<PaddleAgent>();
-
-            var whoIsWinning = gameManager.WhoIsWinning();
-
-            // Game is tied or player who hit last is winning
-            if (whoIsWinning == null || whoIsWinning.Equals(_whoHitLast))
+            var direction = Mathf.Sign(_lastVelocity.x);
+            if (collidingLayer.Equals(_paddleLayer))
             {
-                // Set neutral speed threshold
-                SetNewSpeedAndAngle(false);
+                // Reverse direction and give more power
+                direction *= -1;
+                reflectedVelocity.x = Random.Range(direction * speed, direction * speed * 1.25f);
             }
             else
             {
-                // Player who hit last is losing
-                // Set higher speed threshold
-                SetNewSpeedAndAngle(true);
+                // Maintain speed and direction
+                reflectedVelocity.x = direction * speed;
             }
         }
-        else if (collidingLayer.Equals(_wallLayer))
+
+        // Zero out the y to ensure no vertical movement
+        reflectedVelocity.y = 0;
+
+        // Check colliding with paddle
+        if (collidingLayer.Equals(_paddleLayer))
         {
-            // Set neutral speed threshold
-            SetNewSpeedAndAngle(false);
+            // Ensure reflected ball never goes in straight line
+            reflectedVelocity.z = reflectedVelocity.z switch
+            {
+                > -1f and < 0f => Random.Range(-2f, -1.5f),
+                > 0f and < 1f => Random.Range(1.5f, 2f),
+                _ => reflectedVelocity.z
+            };
         }
+
+        // Apply the bounce factor
+        _rigidbody.velocity = reflectedVelocity;
 
         SaveLastVelocity();
-    }
-
-    /// <summary>
-    /// Generates a random speed and random angle to change the ball's velocity to use in collisions.
-    /// </summary>
-    /// <param name="useHigherSpeedThreshold">
-    /// When true, this will increase the cap of the random speed value.
-    /// </param>
-    /// <returns>
-    /// Sets a random speed value and adds a random angle to the ball's velocity.
-    /// </returns>
-    private void SetNewSpeedAndAngle(bool useHigherSpeedThreshold)
-    {
-        _lastVelocity.Normalize();
-        _lastVelocity *= -GenerateRandomSpeed(useHigherSpeedThreshold);
-        _rigidbody.velocity = AddRandomAngle(_lastVelocity);
-    }
-
-    /// <summary>
-    /// Generates a random float based on the speed value of the ball.
-    /// </summary>
-    /// <param name="useHigherSpeedThreshold">
-    /// When true, this will increase the cap of the random speed value.
-    /// </param>
-    /// <returns>
-    /// The random speed value generated.
-    /// </returns>
-    private float GenerateRandomSpeed(bool useHigherSpeedThreshold)
-    {
-        return useHigherSpeedThreshold ? Random.Range(speed, speed * 2) : Random.Range(speed / 2, speed);
-    }
-
-    /// <summary>
-    /// Generates a random float for an angle of the ball when bouncing.
-    /// </summary>
-    /// <returns>
-    /// The random angle value generated.
-    /// </returns>
-    private static Vector3 AddRandomAngle(Vector3 vector)
-    {
-        var angle = Random.Range(0.05f, 0.45f);
-
-        if (Random.Range(0, 1) == 0)
-        {
-            angle *= -1;
-        }
-        
-        return new Vector3(vector.x, vector.y, angle);
     }
 
     /// <summary>
