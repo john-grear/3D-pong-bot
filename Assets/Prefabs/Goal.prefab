@@ -16,6 +16,10 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 3624890673939512676, guid: 523ba8672805c1143a7af5d846d00eb9, type: 3}
+      propertyPath: m_Material
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 8731644597153388401, guid: 523ba8672805c1143a7af5d846d00eb9, type: 3}
       propertyPath: m_LocalScale.z
       value: 27
@@ -85,3 +89,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5bab5873abc2e046aa1b691ed2d7994, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  opposingPlayer: {fileID: 0}

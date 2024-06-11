@@ -19,4 +19,12 @@ public class Scoreboard : MonoBehaviour
         // Set text to player1.points - player2.points
         scoreboard.SetText($"{player1.Points} - {player2.Points}");
     }
+
+    /// <summary>
+    /// Updates the text to the default 0 - 0.
+    /// </summary>
+    public void ResetText()
+    {
+        scoreboard.SetText("0 - 0");
+    }
 }

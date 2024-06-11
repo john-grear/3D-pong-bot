@@ -6,6 +6,7 @@ public class GameManager : MonoBehaviour
     public Scoreboard scoreboard;
     public GameObject player1Object;
     public GameObject player2Object;
+    public GameObject ball;
 
     private PaddleAgent _player1;
     private PaddleAgent _player2;
@@ -42,28 +43,24 @@ public class GameManager : MonoBehaviour
     /// </returns>
     public bool IsGameOver()
     {
-        var pointDifference = Math.Abs(_player1.Points - _player2.Points);
-
-        // Check player 1 wins
-        if (_player1.Points > _player2.Points && _player1.Points >= 11 && pointDifference >= 2) return true;
-
-        // Check player 2 wins
-        return _player2.Points > _player1.Points && _player2.Points >= 11 && pointDifference >= 2;
+        return DetermineWinnerAndSetRewards(_player1, _player2) ||
+               DetermineWinnerAndSetRewards(_player2, _player1);
     }
 
     /// <summary>
-    /// Determines who is winning the game based on both players' points.
+    /// Determines who is winning the game based on both players' points. If a winner is determined,
+    /// set the rewards for each winner and return true.
     /// </summary>
     /// <returns>
-    /// PaddleAgent object of the winning player. Null if the game is tied.
+    /// Whether there is a winner or not.
     /// </returns>
-    public PaddleAgent WhoIsWinning()
+    private static bool DetermineWinnerAndSetRewards(PaddleAgent player1, PaddleAgent player2)
     {
-        if (_player1.Points > _player2.Points)
-        {
-            return _player1;
-        }
+        var pointDifference = Math.Abs(player1.Points - player2.Points);
+        if (player2.Points <= player1.Points || player2.Points < 11 || pointDifference < 2) return false;
 
-        return _player2.Points > _player1.Points ? _player2 : null;
+        player1.EndEpisode();
+        player2.EndEpisode();
+        return true;
     }
 }

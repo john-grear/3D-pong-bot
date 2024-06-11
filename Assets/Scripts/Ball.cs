@@ -1,17 +1,16 @@
+using System;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
 public class Ball : MonoBehaviour
 {
     public float speed;
+    [NonSerialized] public Rigidbody Rigidbody;
 
     [SerializeField] private GameManager gameManager;
     private Vector3 _startingPosition;
-    private Rigidbody _rigidbody;
     private int _paddleLayer;
     private int _goalLineLayer;
-    private int _wallLayer;
-    private Vector3 _lastVelocity;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -21,37 +20,35 @@ public class Ball : MonoBehaviour
     {
         // Set starting position
         _startingPosition = transform.position;
-        _rigidbody = GetComponent<Rigidbody>();
+        Rigidbody = GetComponent<Rigidbody>();
 
         _paddleLayer = LayerMask.NameToLayer("Paddle");
         _goalLineLayer = LayerMask.NameToLayer("Goal Line");
-        _wallLayer = LayerMask.NameToLayer("Wall");
 
         Launch();
     }
 
-    // /// <inheritdoc cref="FixedUpdate"/>
+    // TODO: This needs changed to disallow the ball from bouncing out of bounds
+    // TODO: Maybe better to use OnCollisionStay so the update function isn't running constantly to check
+    // /// <inheritdoc cref="Update"/>
     // /// <remarks>
+    // /// Sets up starting values.
     // /// </remarks>
-    // /// <exception cref="NotImplementedException"></exception>
-    // private void FixedUpdate()
+    // private void Update()
     // {
-    //     // Ensure ball never slows down and maintains correct direction
-    //     var halfSpeed = speed / 2;
-    //     if (_rigidbody.velocity.x > -halfSpeed && _rigidbody.velocity.x < halfSpeed)
+    //     // Prevent ball from moving out of bounds
+    //     if (Rigidbody.position.x > bounds || Rigidbody.position.x < bounds)
     //     {
-    //         var direction = _lastVelocity.normalized.x * -1;
-    //         _rigidbody.velocity.x = Random.Range(direction * speed, direction * speed * 2);
+    //         transform.position = _startingPosition;
     //     }
     // }
 
     /// <summary>
     /// Launches the ball with a random starting vector and angle.
     /// </summary>
-    private void Launch()
+    public void Launch()
     {
-        _rigidbody.velocity = ChooseStartVector();
-        SaveLastVelocity();
+        Rigidbody.velocity = ChooseStartVector();
     }
 
     /// <summary>
@@ -75,7 +72,8 @@ public class Ball : MonoBehaviour
     /// <remarks>
     /// Checks if collision is with the goal line to add a point to the opposing player
     /// and teleport the ball back to the starting position. If the ball collides with
-    /// a wall or a paddle, the ball bounces off of it.
+    /// a wall or a paddle, the ball bounces off of it. The speed of the ball on colliding is limited
+    /// to a range of 90% to 110% of the speed value.
     /// </remarks>
     /// <param name="other">
     /// Collision object that is used to determine what happens with the ball.
@@ -83,6 +81,26 @@ public class Ball : MonoBehaviour
     private void OnCollisionEnter(Collision other)
     {
         var collidingLayer = other.gameObject.layer;
+
+        // Check colliding with paddle
+        if (collidingLayer.Equals(_paddleLayer))
+        {
+            var paddle = other.gameObject;
+            var contactNormal = other.contacts[0].normal;
+
+            // Check if the collision is on the short side (x-axis)
+            if (Mathf.Abs(contactNormal.x) > Mathf.Abs(contactNormal.y) &&
+                Mathf.Abs(contactNormal.x) > Mathf.Abs(contactNormal.z))
+            {
+                // Reward for hitting front of the paddle to prevent abuse
+                paddle.GetComponent<PaddleAgent>().AddReward(1f);
+            }
+            else
+            {
+                // Stops abuse of AI hitting ball with side of paddle
+                paddle.GetComponent<PaddleAgent>().SetReward(0f);
+            }
+        }
 
         // Check colliding with Goal Line
         if (collidingLayer.Equals(_goalLineLayer))
@@ -93,71 +111,47 @@ public class Ball : MonoBehaviour
             // Give point
             gameManager.AddPoint(player);
 
-            // If in real game, set timer before teleporting
-
-            // Teleport back to starting location
-            transform.position = _startingPosition;
-            _rigidbody.velocity = Vector3.zero;
-
             // Check game over
             if (gameManager.IsGameOver())
             {
                 return;
             }
 
+            // If in real game, set timer before teleporting
+            // TODO: Set time before teleporting
+
+            // Teleport back to starting location
+            transform.position = _startingPosition;
+            Rigidbody.velocity = Vector3.zero;
+
             // Launch ball again
             Launch();
             return;
         }
 
-        // Reflect the velocity vector around the normal
-        var normal = other.GetContact(0).normal;
-        var reflectedVelocity = Vector3.Reflect(_rigidbody.velocity, normal);
+        // Check speed limit and adjust appropriately
+        var sideMovement = Mathf.Abs(Rigidbody.velocity.x);
+        var forwardMovement = Mathf.Abs(Rigidbody.velocity.z);
 
-        // Ensure ball never slows down and maintains correct direction
-        var slowSpeed = speed * 0.9;
-        if (Mathf.Abs(reflectedVelocity.x) < slowSpeed)
+        var currentVector = Rigidbody.velocity;
+        var newX = currentVector.x;
+        var newZ = currentVector.z;
+
+        // Adjust X-Axis speed
+        if (sideMovement < speed * 0.9f || sideMovement > speed * 1.1f)
         {
-            var direction = Mathf.Sign(_lastVelocity.x);
-            if (collidingLayer.Equals(_paddleLayer))
-            {
-                // Reverse direction and give more power
-                direction *= -1;
-                reflectedVelocity.x = Random.Range(direction * speed, direction * speed * 1.25f);
-            }
-            else
-            {
-                // Maintain speed and direction
-                reflectedVelocity.x = direction * speed;
-            }
+            // TODO: Add momentum speed inside here when momentum mode is enabled and increment momentum speed
+            newX = Mathf.Sign(currentVector.x) * speed;
         }
 
-        // Zero out the y to ensure no vertical movement
-        reflectedVelocity.y = 0;
-
-        // Check colliding with paddle
-        if (collidingLayer.Equals(_paddleLayer))
+        // Adjust Z-Axis speed
+        if (forwardMovement < speed * 0.9f || forwardMovement > speed * 1.1f)
         {
-            // Ensure reflected ball never goes in straight line
-            reflectedVelocity.z = reflectedVelocity.z switch
-            {
-                > -1f and < 0f => Random.Range(-2f, -1.5f),
-                > 0f and < 1f => Random.Range(1.5f, 2f),
-                _ => reflectedVelocity.z
-            };
+            // TODO: Add momentum speed inside here when momentum mode is enabled and increment momentum speed
+            newZ = Mathf.Sign(currentVector.z) * speed;
         }
 
-        // Apply the bounce factor
-        _rigidbody.velocity = reflectedVelocity;
-
-        SaveLastVelocity();
-    }
-
-    /// <summary>
-    /// Saves last velocity as rigidbody.velocity to use during collisions when the ball stops.
-    /// </summary>
-    private void SaveLastVelocity()
-    {
-        _lastVelocity = _rigidbody.velocity;
+        // Apply speed changes
+        Rigidbody.velocity = new Vector3(newX, currentVector.y, newZ);
     }
 }
