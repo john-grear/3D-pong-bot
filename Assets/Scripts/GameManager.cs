@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -5,13 +6,14 @@ public class GameManager : MonoBehaviour
     public Scoreboard scoreboard;
     public GameObject player1Object;
     public GameObject player2Object;
+    public GameObject ball;
 
     private PaddleAgent _player1;
     private PaddleAgent _player2;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
-    /// Set variables for both players.
+    /// Sets up starting values.
     /// </remarks>
     private void Start()
     {
@@ -22,7 +24,9 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Adds a point to the given player and updates the scoreboard.
     /// </summary>
-    /// <param name="player"></param>
+    /// <param name="player">
+    /// Determines which player will receive a point.
+    /// </param>
     public void AddPoint(PaddleAgent player)
     {
         player.AddPoint();
@@ -32,18 +36,31 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Determines who is winning the game based on both players' points.
+    /// Determines if the game is over based on points of both players.
     /// </summary>
     /// <returns>
-    /// PaddleAgent object of the winning player. Null if the game is tied.
+    /// Whether the game is over.
     /// </returns>
-    public PaddleAgent WhoIsWinning()
+    public bool IsGameOver()
     {
-        if (_player1.Points > _player2.Points)
-        {
-            return _player1;
-        }
+        return DetermineWinnerAndSetRewards(_player1, _player2) ||
+               DetermineWinnerAndSetRewards(_player2, _player1);
+    }
 
-        return _player2.Points > _player1.Points ? _player2 : null;
+    /// <summary>
+    /// Determines who is winning the game based on both players' points. If a winner is determined,
+    /// set the rewards for each winner and return true.
+    /// </summary>
+    /// <returns>
+    /// Whether there is a winner or not.
+    /// </returns>
+    private static bool DetermineWinnerAndSetRewards(PaddleAgent player1, PaddleAgent player2)
+    {
+        var pointDifference = Math.Abs(player1.Points - player2.Points);
+        if (player2.Points <= player1.Points || player2.Points < 11 || pointDifference < 2) return false;
+
+        player1.EndEpisode();
+        player2.EndEpisode();
+        return true;
     }
 }

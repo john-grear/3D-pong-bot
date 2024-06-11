@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\Ball.cs" />
     <Compile Include="Assets\Scripts\Scoreboard.cs" />
+    <Compile Include="Assets\Scripts\Goal.cs" />
     <Compile Include="Assets\Scripts\GameManager.cs" />
     <Compile Include="Assets\Scripts\PaddleAgent.cs" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
