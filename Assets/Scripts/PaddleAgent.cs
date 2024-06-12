@@ -156,6 +156,11 @@ public class PaddleAgent : Agent
         Points = 0;
         gameManager.scoreboard.ResetText();
 
+        if (!_ball)
+        {
+            Start();
+        }
+        
         // Launch the ball
         _ball.Launch();
     }
