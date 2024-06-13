@@ -7,23 +7,25 @@ public class Ball : MonoBehaviour
     public float speed;
     [NonSerialized] public Rigidbody Rigidbody;
 
-    [SerializeField] private GameManager gameManager;
+    protected int GoalLineLayer;
+
+    private GameManager _gameManager;
     private Vector3 _startingPosition;
     private int _paddleLayer;
-    private int _goalLineLayer;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
     /// Sets up starting values.
     /// </remarks>
-    private void Start()
+    protected void Start()
     {
         // Set starting position
         _startingPosition = transform.position;
         Rigidbody = GetComponent<Rigidbody>();
+        _gameManager = transform.parent.GetComponent<GameManager>();
 
         _paddleLayer = LayerMask.NameToLayer("Paddle");
-        _goalLineLayer = LayerMask.NameToLayer("Goal Line");
+        GoalLineLayer = LayerMask.NameToLayer("Goal Line");
 
         Launch();
     }
@@ -57,7 +59,7 @@ public class Ball : MonoBehaviour
     /// <returns>
     /// Vector either going left or right with a random angle added.
     /// </returns>
-    private Vector3 ChooseStartVector()
+    protected virtual Vector3 ChooseStartVector()
     {
         // Choose left or right
         var startVector = Random.Range(0, 2) == 0 ? Vector3.left * speed : Vector3.right * speed;
@@ -78,7 +80,7 @@ public class Ball : MonoBehaviour
     /// <param name="other">
     /// Collision object that is used to determine what happens with the ball.
     /// </param>
-    private void OnCollisionEnter(Collision other)
+    protected virtual void OnCollisionEnter(Collision other)
     {
         var collidingLayer = other.gameObject.layer;
 
@@ -103,16 +105,16 @@ public class Ball : MonoBehaviour
         }
 
         // Check colliding with Goal Line
-        if (collidingLayer.Equals(_goalLineLayer))
+        if (collidingLayer.Equals(GoalLineLayer))
         {
             // Gets the opposing player to score a point for them
             var player = other.gameObject.GetComponent<Goal>().opposingPlayer.GetComponent<PaddleAgent>();
 
             // Give point
-            gameManager.AddPoint(player);
+            _gameManager.AddPoint(player);
 
             // Check game over
-            if (gameManager.IsGameOver())
+            if (_gameManager.IsGameOver())
             {
                 return;
             }
@@ -129,6 +131,18 @@ public class Ball : MonoBehaviour
             return;
         }
 
+        // Apply speed changes
+        Rigidbody.velocity = CheckVectorSpeedLimit();
+    }
+
+    /// <summary>
+    /// Checks the current velocity x and z and ensures they are within 90% and 110% of the ball speed.
+    /// </summary>
+    /// <returns>
+    /// Vector that is created after limiting the speed.
+    /// </returns>
+    protected virtual Vector3 CheckVectorSpeedLimit()
+    {
         // Check speed limit and adjust appropriately
         var sideMovement = Mathf.Abs(Rigidbody.velocity.x);
         var forwardMovement = Mathf.Abs(Rigidbody.velocity.z);
@@ -151,7 +165,6 @@ public class Ball : MonoBehaviour
             newZ = Mathf.Sign(currentVector.z) * speed;
         }
 
-        // Apply speed changes
-        Rigidbody.velocity = new Vector3(newX, currentVector.y, newZ);
+        return new Vector3(newX, currentVector.y, newZ);
     }
 }

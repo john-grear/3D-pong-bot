@@ -10,10 +10,12 @@ public class PaddleAgent : Agent
 
     [NonSerialized] public int Points;
 
-    [SerializeField] private GameManager gameManager;
-    private Rigidbody _rigidbody;
+    protected Rigidbody Rigidbody;
+
+    private GameManager _gameManager;
     private Ball _ball;
     private Vector3 _startingPosition;
+
     private int _ballLayer;
     // private int _lastDirection;
     // private int _sameDirectionFrames;
@@ -24,8 +26,9 @@ public class PaddleAgent : Agent
     /// </remarks>
     private void Start()
     {
-        _rigidbody = GetComponent<Rigidbody>();
-        _ball = gameManager.ball.GetComponent<Ball>();
+        Rigidbody = GetComponent<Rigidbody>();
+        _gameManager = transform.parent.GetComponent<GameManager>();
+        _ball = _gameManager.ball.GetComponent<Ball>();
         _startingPosition = transform.position;
 
         _ballLayer = LayerMask.NameToLayer("Ball");
@@ -42,11 +45,11 @@ public class PaddleAgent : Agent
     public override void CollectObservations(VectorSensor sensor)
     {
         // Where both paddles are at
-        sensor.AddObservation(gameManager.player1Object.transform.position);
-        sensor.AddObservation(gameManager.player2Object.transform.position);
+        sensor.AddObservation(_gameManager.player1Object.transform.position);
+        sensor.AddObservation(_gameManager.player2Object.transform.position);
 
         // Current velocity
-        sensor.AddObservation(_rigidbody.velocity);
+        sensor.AddObservation(Rigidbody.velocity);
 
         // Location of, velocity of, and distance to the ball
         var ballPosition = _ball.transform.position;
@@ -78,7 +81,7 @@ public class PaddleAgent : Agent
     {
         var continuousActionsOut = actions.ContinuousActions;
 
-        _rigidbody.velocity = continuousActionsOut[0] switch
+        Rigidbody.velocity = continuousActionsOut[0] switch
         {
             > 0 => Vector3.forward * speed,
             < 0 => Vector3.back * speed,
@@ -88,7 +91,7 @@ public class PaddleAgent : Agent
         // CheckMovement(_rigidbody.velocity);
 
         // Penalize paddle for moving to incentivize efficient movement to hit the ball
-        if (_rigidbody.velocity != Vector3.zero)
+        if (Rigidbody.velocity != Vector3.zero)
         {
             AddReward(-0.01f);
         }
@@ -154,13 +157,13 @@ public class PaddleAgent : Agent
     {
         // Reset scoreboard
         Points = 0;
-        gameManager.scoreboard.ResetText();
+        _gameManager.scoreboard.ResetText();
 
         if (!_ball)
         {
             Start();
         }
-        
+
         // Launch the ball
         _ball.Launch();
     }
