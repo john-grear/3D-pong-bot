@@ -1,24 +1,25 @@
 using System;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Policies;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 
 public class PaddleAgent : Agent
 {
     public float speed;
+    public float smoothingFactor = 3f;
 
     [NonSerialized] public int Points;
 
     protected Rigidbody Rigidbody;
 
-    private GameManager _gameManager;
+    private _gameManager __gameManager;
     private Ball _ball;
     private Vector3 _startingPosition;
 
     private int _ballLayer;
-    // private int _lastDirection;
-    // private int _sameDirectionFrames;
+    private bool _isAgent;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -27,11 +28,20 @@ public class PaddleAgent : Agent
     private void Start()
     {
         Rigidbody = GetComponent<Rigidbody>();
-        _gameManager = transform.parent.GetComponent<GameManager>();
-        _ball = _gameManager.ball.GetComponent<Ball>();
-        _startingPosition = transform.position;
+        _ball = __gameManager.ball.GetComponent<Ball>();
+        
+        var paddleTransform = transform;
+        __gameManager = paddleTransform.parent.GetComponent<_gameManager>();
+        _startingPosition = paddleTransform.position;
+        speed *= paddleTransform.parent.localScale.x;
 
         _ballLayer = LayerMask.NameToLayer("Ball");
+        
+        // Check agent is either in inference mode or it's in heuristic mode with a model set
+        // Used to give different controls to player and agent
+        var behaviorParameters = GetComponent<BehaviorParameters>();
+        _isAgent = !behaviorParameters.IsInHeuristicMode() ||
+                   (behaviorParameters.IsInHeuristicMode() && behaviorParameters.Model != null);
     }
 
     /// <inheritdoc cref="CollectObservations"/>
@@ -47,6 +57,7 @@ public class PaddleAgent : Agent
         // Where both paddles are at
         sensor.AddObservation(_gameManager.player1Object.transform.position);
         sensor.AddObservation(_gameManager.player2Object.transform.position);
+        sensor.AddObservation(_startingPosition);
 
         // Current velocity
         sensor.AddObservation(Rigidbody.velocity);
@@ -55,7 +66,7 @@ public class PaddleAgent : Agent
         var ballPosition = _ball.transform.position;
         sensor.AddObservation(ballPosition);
         sensor.AddObservation(_ball.Rigidbody.velocity);
-        sensor.AddObservation(ballPosition - gameObject.transform.position);
+        sensor.AddObservation(ballPosition - transform.position);
     }
 
     /// <inheritdoc cref="Heuristic"/>
@@ -67,9 +78,14 @@ public class PaddleAgent : Agent
     /// </param>
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        var continuousActionsOut = actionsOut.ContinuousActions;
+        var discreteActionsOut = actionsOut.DiscreteActions;
 
-        continuousActionsOut[0] = Input.GetAxisRaw("Vertical");
+        discreteActionsOut[0] = Input.GetAxisRaw("Vertical") switch
+        {
+            > 0 => 1,
+            < 0 => -1,
+            _ => 0
+        };
     }
 
     /// <inheritdoc cref="OnActionReceived"/>
@@ -79,21 +95,36 @@ public class PaddleAgent : Agent
     /// <param name="actions"></param>
     public override void OnActionReceived(ActionBuffers actions)
     {
-        var continuousActionsOut = actions.ContinuousActions;
+        
+        var discreteActionsOut = actions.DiscreteActions;
 
-        Rigidbody.velocity = continuousActionsOut[0] switch
+        if (_isAgent)
         {
-            > 0 => Vector3.forward * speed,
-            < 0 => Vector3.back * speed,
-            _ => Vector3.zero
-        };
+            // Agent plays with different controls and smoothing
+            var targetVelocity = discreteActionsOut[0] switch
+            {
+                2 => Vector3.forward * speed,
+                1 => Vector3.back * speed,
+                _ => Vector3.zero
+            };
 
-        // CheckMovement(_rigidbody.velocity);
+            // Smoothly transition to the target velocity
+            var newVelocity = Vector3.Lerp(
+                Rigidbody.velocity, targetVelocity, smoothingFactor * Time.deltaTime
+            );
 
-        // Penalize paddle for moving to incentivize efficient movement to hit the ball
-        if (Rigidbody.velocity != Vector3.zero)
+            Rigidbody.velocity = newVelocity;
+        }
+        else
         {
-            AddReward(-0.01f);
+            var newVelocity = discreteActionsOut[0] switch
+            {
+                1 => Vector3.forward * speed,
+                -1 => Vector3.back * speed,
+                _ => Vector3.zero
+            };
+
+            Rigidbody.velocity = newVelocity;
         }
     }
 
@@ -106,38 +137,21 @@ public class PaddleAgent : Agent
     /// </param>
     private void OnCollisionEnter(Collision other)
     {
-        // Reward the agent for hitting the ball
-        if (other.gameObject.layer.Equals(_ballLayer))
-        {
-            AddReward(1f);
-        }
-    }
+        if (!other.gameObject.layer.Equals(_ballLayer)) return;
 
-    // TODO: Original function to stop jittering of AI, but needs reworked.
-    // /// <summary>
-    // /// Checks the movement of the paddle to ensure that it doesn't jitter around during testing.
-    // /// </summary>
-    // /// <param name="paddleMovement">
-    // /// Velocity to check to ensure stability.
-    // /// </param>
-    // private void CheckMovement(Vector3 paddleMovement)
-    // {
-    //     if (Math.Sign(paddleMovement.x) == 0) return;
-    //
-    //     // Check moving same direction as before
-    //     if (Math.Sign(paddleMovement.x) == _lastDirection)
-    //     {
-    //         // Count frames moving in the same direction to prevent jittering
-    //         ++_sameDirectionFrames;
-    //     }
-    //     else if (_sameDirectionFrames < 10)
-    //     {
-    //         // Update direction and penalize paddle for moving in a different direction too soon
-    //         _lastDirection = Math.Sign(paddleMovement.x);
-    //         _sameDirectionFrames = 0;
-    //         AddReward(-0.5f);
-    //     }
-    // }
+        var contactNormal = other.contacts[0].normal;
+
+        // Check if the collision is on the short side of the paddle
+        if ((Mathf.Abs(contactNormal.z) > 0.75))
+        {
+            // Stops abuse of AI hitting ball with side of paddle, breaking score system and making ball escape
+            SetReward(0f);
+            return;
+        }
+
+        // Reward the agent for hitting the ball
+        AddReward(1f);
+    }
 
     /// <summary>
     /// Resets the position of the paddle before ending the episode.
