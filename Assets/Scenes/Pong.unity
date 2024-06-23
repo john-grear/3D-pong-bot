@@ -1776,6 +1776,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 360183766823505467, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
+      propertyPath: m_ExcludeLayers.m_Bits
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1465747065664527250, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2428758215107168880, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2682754566745435215, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
+      propertyPath: m_CollisionDetection
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3538825111415529433, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
+      propertyPath: m_ExcludeLayers.m_Bits
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 4439082147751978629, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1819,14 +1839,14 @@ PrefabInstance:
     - target: {fileID: 6468115106798893245, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
       propertyPath: m_Model
       value: 
-      objectReference: {fileID: 5022602860645237092, guid: 45ed22b1a2e10d9438242cefadb1ed94, type: 3}
-    - target: {fileID: 7046246001304709199, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
-      propertyPath: m_Model
-      value: 
-      objectReference: {fileID: 5022602860645237092, guid: 45ed22b1a2e10d9438242cefadb1ed94, type: 3}
+      objectReference: {fileID: 0}
     - target: {fileID: 7714181563287325941, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
       propertyPath: m_Name
       value: Pong 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8296952499792356097, guid: 055a5ea2aab08604cad5a3fbdbf32cd1, type: 3}
+      propertyPath: m_CollisionDetection
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
