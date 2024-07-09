@@ -13,13 +13,13 @@ public class PaddleAgent : Agent
     [NonSerialized] public int Points;
 
     protected Rigidbody Rigidbody;
+    protected GameManager GameManager;
+    protected bool IsAgent;
+    protected int BallLayer;
 
-    private _gameManager __gameManager;
     private Ball _ball;
+    private Goal _goal;
     private Vector3 _startingPosition;
-
-    private int _ballLayer;
-    private bool _isAgent;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -28,20 +28,21 @@ public class PaddleAgent : Agent
     private void Start()
     {
         Rigidbody = GetComponent<Rigidbody>();
-        _ball = __gameManager.ball.GetComponent<Ball>();
-        
+
         var paddleTransform = transform;
-        __gameManager = paddleTransform.parent.GetComponent<_gameManager>();
+        GameManager = paddleTransform.parent.GetComponent<GameManager>();
         _startingPosition = paddleTransform.position;
         speed *= paddleTransform.parent.localScale.x;
 
-        _ballLayer = LayerMask.NameToLayer("Ball");
-        
+        _ball = GameManager.ball;
+        BallLayer = LayerMask.NameToLayer("Ball");
+        _goal = GameManager.GetGoalForPlayer(this);
+
         // Check agent is either in inference mode or it's in heuristic mode with a model set
         // Used to give different controls to player and agent
         var behaviorParameters = GetComponent<BehaviorParameters>();
-        _isAgent = !behaviorParameters.IsInHeuristicMode() ||
-                   (behaviorParameters.IsInHeuristicMode() && behaviorParameters.Model != null);
+        IsAgent = !behaviorParameters.IsInHeuristicMode() ||
+                  (behaviorParameters.IsInHeuristicMode() && behaviorParameters.Model != null);
     }
 
     /// <inheritdoc cref="CollectObservations"/>
@@ -55,9 +56,9 @@ public class PaddleAgent : Agent
     public override void CollectObservations(VectorSensor sensor)
     {
         // Where both paddles are at
-        sensor.AddObservation(_gameManager.player1Object.transform.position);
-        sensor.AddObservation(_gameManager.player2Object.transform.position);
-        sensor.AddObservation(_startingPosition);
+        var currentPosition = transform.position;
+        sensor.AddObservation(currentPosition);
+        sensor.AddObservation(_goal.opposingPlayer.transform.position);
 
         // Current velocity
         sensor.AddObservation(Rigidbody.velocity);
@@ -66,7 +67,8 @@ public class PaddleAgent : Agent
         var ballPosition = _ball.transform.position;
         sensor.AddObservation(ballPosition);
         sensor.AddObservation(_ball.Rigidbody.velocity);
-        sensor.AddObservation(ballPosition - transform.position);
+        var distanceToBall = Vector3.Distance(currentPosition, ballPosition);
+        sensor.AddObservation(distanceToBall);
     }
 
     /// <inheritdoc cref="Heuristic"/>
@@ -95,10 +97,9 @@ public class PaddleAgent : Agent
     /// <param name="actions"></param>
     public override void OnActionReceived(ActionBuffers actions)
     {
-        
         var discreteActionsOut = actions.DiscreteActions;
 
-        if (_isAgent)
+        if (IsAgent)
         {
             // Agent plays with different controls and smoothing
             var targetVelocity = discreteActionsOut[0] switch
@@ -133,11 +134,11 @@ public class PaddleAgent : Agent
     /// Checks if collision is with the ball to provide rewards.
     /// </remarks>
     /// <param name="other">
-    /// Potential ball object.
+    /// Object colliding into.
     /// </param>
-    private void OnCollisionEnter(Collision other)
+    protected virtual void OnCollisionEnter(Collision other)
     {
-        if (!other.gameObject.layer.Equals(_ballLayer)) return;
+        if (!other.gameObject.layer.Equals(BallLayer)) return;
 
         var contactNormal = other.contacts[0].normal;
 
@@ -171,12 +172,9 @@ public class PaddleAgent : Agent
     {
         // Reset scoreboard
         Points = 0;
-        _gameManager.scoreboard.ResetText();
+        GameManager.scoreboard.ResetText();
 
-        if (!_ball)
-        {
-            Start();
-        }
+        if (!_ball) Start();
 
         // Launch the ball
         _ball.Launch();

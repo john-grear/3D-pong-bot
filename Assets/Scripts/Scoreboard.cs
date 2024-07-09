@@ -4,20 +4,16 @@ using UnityEngine;
 public class Scoreboard : MonoBehaviour
 {
     public TMP_Text scoreboard;
+    public Goal goal1;
+    public Goal goal2;
 
     /// <summary>
     /// Updates the text to reflect the players scores.
     /// </summary>
-    /// <param name="player1">
-    /// Used to update scoreboard text.
-    /// </param>
-    /// <param name="player2">
-    /// Used to update scoreboard text.
-    /// </param>
-    public void UpdateText(PaddleAgent player1, PaddleAgent player2)
+    public void UpdateText()
     {
         // Set text to player1.points - player2.points
-        scoreboard.SetText($"{player1.Points} - {player2.Points}");
+        scoreboard.SetText($"{goal1.defendingPlayer.Points} - {goal2.defendingPlayer.Points}");
     }
 
     /// <summary>

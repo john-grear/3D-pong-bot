@@ -5,6 +5,7 @@ using Random = UnityEngine.Random;
 public class Ball : MonoBehaviour
 {
     public float speed;
+
     [NonSerialized] public Rigidbody Rigidbody;
 
     private GameManager _gameManager;
@@ -67,30 +68,32 @@ public class Ball : MonoBehaviour
     /// </param>
     protected virtual void OnCollisionEnter(Collision other)
     {
-        var collidingLayer = other.gameObject.layer;
+        var collidingObject = other.gameObject;
+        var collidingLayer = collidingObject.layer;
 
         // Check colliding with Goal
         if (collidingLayer.Equals(_goalLayer))
         {
             // Gets the opposing player to score a point for them
-            var player = other.gameObject.GetComponent<Goal>().opposingPlayer.GetComponent<PaddleAgent>();
-        
+            var goal = collidingObject.GetComponent<Goal>();
+            var player = goal.opposingPlayer;
+
             // Give point
             _gameManager.AddPoint(player);
-        
+
             // If in real game, set timer before teleporting
             // TODO: Set time before teleporting
-        
+
             // Teleport back to starting location
             transform.position = _startingPosition;
             Rigidbody.velocity = Vector3.zero;
-        
+
             // Check game over
             if (_gameManager.IsGameOver())
             {
                 return;
             }
-        
+
             // Launch ball again
             Launch();
             return;
@@ -103,8 +106,7 @@ public class Ball : MonoBehaviour
     /// <remarks>
     /// Checks the speed limit of the ball before exiting a collision.
     /// </remarks>
-    /// <param name="other"></param>
-    private void OnCollisionExit(Collision other)
+    protected void OnCollisionExit()
     {
         CheckBallSpeedLimit();
     }
@@ -112,7 +114,7 @@ public class Ball : MonoBehaviour
     /// <summary>
     /// The speed of the ball on colliding is limited to a range of 90% to 110% of the speed value.
     /// </summary>
-    private void CheckBallSpeedLimit()
+    protected virtual void CheckBallSpeedLimit()
     {
         // Check speed limit and adjust appropriately
         var currentVector = Rigidbody.velocity;
@@ -128,11 +130,7 @@ public class Ball : MonoBehaviour
         if (sideMovement < lowSpeed || sideMovement > highSpeed)
         {
             // TODO: Add momentum speed inside here when momentum mode is enabled and increment momentum speed
-            if (currentVector.x == 0)
-            {
-                Debug.Log("0 X");
-                currentVector.x = 1;
-            }
+            if (newX == 0) currentVector.x = 1;
 
             newX = Mathf.Sign(currentVector.x) * speed;
         }
@@ -141,11 +139,7 @@ public class Ball : MonoBehaviour
         if (forwardMovement < lowSpeed || forwardMovement > highSpeed)
         {
             // TODO: Add momentum speed inside here when momentum mode is enabled and increment momentum speed
-            if (currentVector.z == 0)
-            {
-                Debug.Log("0 Z");
-                currentVector.z = 1;
-            }
+            if (newZ == 0) currentVector.z = 1;
 
             newZ = Mathf.Sign(currentVector.z) * speed;
         }
