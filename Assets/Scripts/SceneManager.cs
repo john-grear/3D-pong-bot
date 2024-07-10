@@ -1,33 +1,30 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class SceneManager : MonoBehaviour
 {
-    public Button startButton;
-    public Button settingsButton;
-    public Button quitButton;
+    public GameObject playButton;
+    public GameObject initialDifficultyButton;
+    public GameObject initialSettingsSlider;
 
-    public Button easyButton;
-    public Button mediumButton;
-    public Button hardButton;
-    public Button backButton;
-
+    public GameObject menuButtons;
+    public GameObject difficultyButtons;
     public GameObject settingsPanel;
 
     /// <summary>
-    /// Toggles between displaying the easy, medium, and hard modes to choose which one to play and
-    /// the start, settings, and quit buttons.
+    /// Toggles between displaying the difficulty buttons and the menu buttons.
     /// </summary>
     public void TogglePlayOptions()
     {
-        startButton.gameObject.SetActive(!startButton.gameObject.activeSelf);
-        settingsButton.gameObject.SetActive(!settingsButton.gameObject.activeSelf);
-        quitButton.gameObject.SetActive(!quitButton.gameObject.activeSelf);
+        // Deselect button
+        EventSystem.current.SetSelectedGameObject(null);
+        
+        // Toggle which buttons being displayed
+        menuButtons.SetActive(!menuButtons.activeSelf);
+        difficultyButtons.SetActive(!difficultyButtons.activeSelf);
 
-        easyButton.gameObject.SetActive(!easyButton.gameObject.activeSelf);
-        mediumButton.gameObject.SetActive(!mediumButton.gameObject.activeSelf);
-        hardButton.gameObject.SetActive(!hardButton.gameObject.activeSelf);
-        backButton.gameObject.SetActive(!backButton.gameObject.activeSelf);
+        // Update selected button depending on which buttons being toggled
+        EventSystem.current.SetSelectedGameObject(menuButtons.activeSelf ? playButton : initialDifficultyButton);
     }
 
     /// <summary>
@@ -39,10 +36,20 @@ public class SceneManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Enables / disables the settings panel.
+    /// Enables / disables the settings panel, toggling menu buttons being displayed as well.
     /// </summary>
     public void ToggleSettingsPanel()
     {
+        // Deselect button
+        EventSystem.current.SetSelectedGameObject(null);
+        
+        // Toggle which buttons being displayed
+        menuButtons.SetActive(!menuButtons.activeSelf);
+
+        // Update selected button depending on if settings panel open or not
+        EventSystem.current.SetSelectedGameObject(settingsPanel.activeSelf ? playButton : initialSettingsSlider);
+
+        // Toggle settings panel after selecting button to not lose selected button
         settingsPanel.SetActive(!settingsPanel.activeSelf);
     }
 
