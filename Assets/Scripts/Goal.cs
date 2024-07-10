@@ -2,5 +2,6 @@ using UnityEngine;
 
 public class Goal : MonoBehaviour
 {
-    public GameObject opposingPlayer;
+    public PaddleAgent defendingPlayer;
+    public PaddleAgent opposingPlayer;
 }

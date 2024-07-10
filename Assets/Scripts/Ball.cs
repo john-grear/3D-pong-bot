@@ -5,45 +5,30 @@ using Random = UnityEngine.Random;
 public class Ball : MonoBehaviour
 {
     public float speed;
-    [NonSerialized] public Rigidbody Rigidbody;
 
-    protected int GoalLineLayer;
+    [NonSerialized] public Rigidbody Rigidbody;
 
     private GameManager _gameManager;
     private Vector3 _startingPosition;
-    private int _paddleLayer;
+    private int _goalLayer;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
     /// Sets up starting values.
     /// </remarks>
-    protected void Start()
+    private void Start()
     {
         // Set starting position
-        _startingPosition = transform.position;
+        var ballTransform = transform;
+        _startingPosition = ballTransform.position;
+        speed *= ballTransform.parent.localScale.x;
         Rigidbody = GetComponent<Rigidbody>();
         _gameManager = transform.parent.GetComponent<GameManager>();
 
-        _paddleLayer = LayerMask.NameToLayer("Paddle");
-        GoalLineLayer = LayerMask.NameToLayer("Goal Line");
+        _goalLayer = LayerMask.NameToLayer("Goal");
 
         Launch();
     }
-
-    // TODO: This needs changed to disallow the ball from bouncing out of bounds
-    // TODO: Maybe better to use OnCollisionStay so the update function isn't running constantly to check
-    // /// <inheritdoc cref="Update"/>
-    // /// <remarks>
-    // /// Sets up starting values.
-    // /// </remarks>
-    // private void Update()
-    // {
-    //     // Prevent ball from moving out of bounds
-    //     if (Rigidbody.position.x > bounds || Rigidbody.position.x < bounds)
-    //     {
-    //         transform.position = _startingPosition;
-    //     }
-    // }
 
     /// <summary>
     /// Launches the ball with a random starting vector and angle.
@@ -62,7 +47,9 @@ public class Ball : MonoBehaviour
     protected virtual Vector3 ChooseStartVector()
     {
         // Choose left or right
-        var startVector = Random.Range(0, 2) == 0 ? Vector3.left * speed : Vector3.right * speed;
+        var startVector = Random.Range(0, 2) == 0
+            ? Vector3.left * speed
+            : Vector3.right * speed;
 
         // Add random angle
         startVector += new Vector3(0, 0, Random.Range(-2f, 2f));
@@ -72,52 +59,27 @@ public class Ball : MonoBehaviour
 
     /// <inheritdoc cref="OnCollisionEnter"/>
     /// <remarks>
-    /// Checks if collision is with the goal line to add a point to the opposing player
+    /// Checks if collision is with the Goal to add a point to the opposing player
     /// and teleport the ball back to the starting position. If the ball collides with
-    /// a wall or a paddle, the ball bounces off of it. The speed of the ball on colliding is limited
-    /// to a range of 90% to 110% of the speed value.
+    /// a wall or a paddle, the ball bounces off of it. The speed is then limited to a range.
     /// </remarks>
     /// <param name="other">
     /// Collision object that is used to determine what happens with the ball.
     /// </param>
     protected virtual void OnCollisionEnter(Collision other)
     {
-        var collidingLayer = other.gameObject.layer;
+        var collidingObject = other.gameObject;
+        var collidingLayer = collidingObject.layer;
 
-        // Check colliding with paddle
-        if (collidingLayer.Equals(_paddleLayer))
-        {
-            var paddle = other.gameObject;
-            var contactNormal = other.contacts[0].normal;
-
-            // Check if the collision is on the short side (x-axis)
-            if (Mathf.Abs(contactNormal.x) > Mathf.Abs(contactNormal.y) &&
-                Mathf.Abs(contactNormal.x) > Mathf.Abs(contactNormal.z))
-            {
-                // Reward for hitting front of the paddle to prevent abuse
-                paddle.GetComponent<PaddleAgent>().AddReward(1f);
-            }
-            else
-            {
-                // Stops abuse of AI hitting ball with side of paddle
-                paddle.GetComponent<PaddleAgent>().SetReward(0f);
-            }
-        }
-
-        // Check colliding with Goal Line
-        if (collidingLayer.Equals(GoalLineLayer))
+        // Check colliding with Goal
+        if (collidingLayer.Equals(_goalLayer))
         {
             // Gets the opposing player to score a point for them
-            var player = other.gameObject.GetComponent<Goal>().opposingPlayer.GetComponent<PaddleAgent>();
+            var goal = collidingObject.GetComponent<Goal>();
+            var player = goal.opposingPlayer;
 
             // Give point
             _gameManager.AddPoint(player);
-
-            // Check game over
-            if (_gameManager.IsGameOver())
-            {
-                return;
-            }
 
             // If in real game, set timer before teleporting
             // TODO: Set time before teleporting
@@ -126,45 +88,63 @@ public class Ball : MonoBehaviour
             transform.position = _startingPosition;
             Rigidbody.velocity = Vector3.zero;
 
+            // Check game over
+            if (_gameManager.IsGameOver())
+            {
+                return;
+            }
+
             // Launch ball again
             Launch();
             return;
         }
 
-        // Apply speed changes
-        Rigidbody.velocity = CheckVectorSpeedLimit();
+        CheckBallSpeedLimit();
+    }
+
+    /// <inheritdoc cref="OnCollisionExit"/>
+    /// <remarks>
+    /// Checks the speed limit of the ball before exiting a collision.
+    /// </remarks>
+    protected void OnCollisionExit()
+    {
+        CheckBallSpeedLimit();
     }
 
     /// <summary>
-    /// Checks the current velocity x and z and ensures they are within 90% and 110% of the ball speed.
+    /// The speed of the ball on colliding is limited to a range of 90% to 110% of the speed value.
     /// </summary>
-    /// <returns>
-    /// Vector that is created after limiting the speed.
-    /// </returns>
-    protected virtual Vector3 CheckVectorSpeedLimit()
+    protected virtual void CheckBallSpeedLimit()
     {
         // Check speed limit and adjust appropriately
-        var sideMovement = Mathf.Abs(Rigidbody.velocity.x);
-        var forwardMovement = Mathf.Abs(Rigidbody.velocity.z);
-
         var currentVector = Rigidbody.velocity;
         var newX = currentVector.x;
         var newZ = currentVector.z;
+        var sideMovement = Mathf.Abs(newX);
+        var forwardMovement = Mathf.Abs(newZ);
+
+        var lowSpeed = speed * 0.9f;
+        var highSpeed = speed * 1.1f;
 
         // Adjust X-Axis speed
-        if (sideMovement < speed * 0.9f || sideMovement > speed * 1.1f)
+        if (sideMovement < lowSpeed || sideMovement > highSpeed)
         {
             // TODO: Add momentum speed inside here when momentum mode is enabled and increment momentum speed
+            if (newX == 0) currentVector.x = 1;
+
             newX = Mathf.Sign(currentVector.x) * speed;
         }
 
         // Adjust Z-Axis speed
-        if (forwardMovement < speed * 0.9f || forwardMovement > speed * 1.1f)
+        if (forwardMovement < lowSpeed || forwardMovement > highSpeed)
         {
             // TODO: Add momentum speed inside here when momentum mode is enabled and increment momentum speed
+            if (newZ == 0) currentVector.z = 1;
+
             newZ = Mathf.Sign(currentVector.z) * speed;
         }
 
-        return new Vector3(newX, currentVector.y, newZ);
+        // Apply speed changes
+        Rigidbody.velocity = new Vector3(newX, currentVector.y, newZ);
     }
 }

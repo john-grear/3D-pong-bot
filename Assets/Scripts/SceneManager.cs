@@ -53,6 +53,9 @@ public class SceneManager : MonoBehaviour
         settingsPanel.SetActive(!settingsPanel.activeSelf);
     }
 
+    /// <summary>
+    /// Stops the editor or quits the game.
+    /// </summary>
     public void QuitGame()
     {
 #if UNITY_EDITOR
