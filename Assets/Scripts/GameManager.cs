@@ -40,8 +40,8 @@ public class GameManager : MonoBehaviour
         // Get players and reset points for both
         var player1 = scoreboard.goal1.defendingPlayer;
         var player2 = scoreboard.goal1.opposingPlayer;
-        player1.Points = 0;
-        player2.Points = 0;
+        player1.points = 0;
+        player2.points = 0;
 
         // Set player 1 to be played by player, not CPU
         var player1Behavior = player1.GetComponent<BehaviorParameters>();
@@ -49,9 +49,9 @@ public class GameManager : MonoBehaviour
         player1Behavior.BehaviorType = BehaviorType.HeuristicOnly;
 
         bool cameraInPosition = false, player1InPosition = false, player2InPosition = false, ballInPosition = false;
-        ball.Rigidbody.linearVelocity = Vector3.zero;
+        ball.rigidbody.linearVelocity = Vector3.zero;
         Debug.Log(ball.gameObject.transform.position);
-        Debug.Log(ball.StartingPosition);
+        Debug.Log(ball.startingPosition);
 
         // Simultaneously move all pieces into position
         while (true)
@@ -61,13 +61,13 @@ public class GameManager : MonoBehaviour
 
             // Move each paddle, ball, and camera into position using LERP
             if (!cameraInPosition) cameraInPosition = MoveIntoPosition(gameCamera.transform, cameraStartingPosition);
-            if (!player1InPosition) player1InPosition = MoveIntoPosition(player1.transform, player1.StartingPosition);
-            if (!player2InPosition) player2InPosition = MoveIntoPosition(player2.transform, player2.StartingPosition);
-            if (!ballInPosition) ballInPosition = MoveIntoPosition(ball.transform, ball.StartingPosition);
+            if (!player1InPosition) player1InPosition = MoveIntoPosition(player1.transform, player1.startingPosition);
+            if (!player2InPosition) player2InPosition = MoveIntoPosition(player2.transform, player2.startingPosition);
+            if (!ballInPosition) ballInPosition = MoveIntoPosition(ball.transform, ball.startingPosition);
         }
 
         Debug.Log(ball.gameObject.transform.position);
-        Debug.Log(ball.StartingPosition);
+        Debug.Log(ball.startingPosition);
 
         // ball.transform.position = ball.StartingPosition;
 
@@ -187,8 +187,8 @@ public class GameManager : MonoBehaviour
             var goal = goals[i];
             var player1 = goal.defendingPlayer;
             var player2 = goal.opposingPlayer;
-            var pointDifference = player1.Points - player2.Points;
-            if (pointDifference < 2 || player1.Points < 11) continue;
+            var pointDifference = player1.points - player2.points;
+            if (pointDifference < 2 || player1.points < 11) continue;
             winner = player1;
             winnerIsPlayer1 = i == 0;
         }
@@ -221,7 +221,7 @@ public class GameManager : MonoBehaviour
             return true;
         }
 
-        ball.Rigidbody.linearVelocity = Vector3.zero;
+        ball.rigidbody.linearVelocity = Vector3.zero;
 
         return true;
     }

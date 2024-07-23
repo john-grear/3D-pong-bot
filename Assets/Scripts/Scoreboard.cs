@@ -13,7 +13,7 @@ public class Scoreboard : MonoBehaviour
     public void UpdateText()
     {
         // Set text to player1.points - player2.points
-        scoreboard.SetText($"{goal1.defendingPlayer.Points} - {goal2.defendingPlayer.Points}");
+        scoreboard.SetText($"{goal1.defendingPlayer.points} - {goal2.defendingPlayer.points}");
     }
 
     /// <summary>

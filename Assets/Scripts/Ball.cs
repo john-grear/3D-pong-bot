@@ -7,8 +7,8 @@ public class Ball : MonoBehaviour
 {
     public float speed;
 
-    [NonSerialized] public Rigidbody Rigidbody;
-    [NonSerialized] public Vector3 StartingPosition;
+    [NonSerialized] public new Rigidbody rigidbody;
+    [NonSerialized] public Vector3 startingPosition;
 
     private GameManager _gameManager;
     private int _goalLayer;
@@ -21,9 +21,9 @@ public class Ball : MonoBehaviour
     {
         // Set starting position
         var ballTransform = transform;
-        StartingPosition = ballTransform.position;
+        startingPosition = ballTransform.position;
         speed *= ballTransform.parent.localScale.x;
-        Rigidbody = GetComponent<Rigidbody>();
+        rigidbody = GetComponent<Rigidbody>();
         _gameManager = transform.parent.GetComponent<GameManager>();
 
         _goalLayer = LayerMask.NameToLayer("Goal");
@@ -36,7 +36,7 @@ public class Ball : MonoBehaviour
     /// </summary>
     public void Launch()
     {
-        Rigidbody.linearVelocity = ChooseStartVector();
+        rigidbody.linearVelocity = ChooseStartVector();
     }
 
     /// <summary>
@@ -83,8 +83,8 @@ public class Ball : MonoBehaviour
             _gameManager.AddPoint(player);
 
             // Teleport back to starting location
-            transform.position = StartingPosition;
-            Rigidbody.linearVelocity = Vector3.zero;
+            transform.position = startingPosition;
+            rigidbody.linearVelocity = Vector3.zero;
 
             // Check game over
             if (_gameManager.IsGameOver())
@@ -118,7 +118,7 @@ public class Ball : MonoBehaviour
     protected virtual void CheckBallSpeedLimit()
     {
         // Check speed limit and adjust appropriately
-        var currentVector = Rigidbody.linearVelocity;
+        var currentVector = rigidbody.linearVelocity;
         var newX = currentVector.x;
         var newZ = currentVector.z;
         var sideMovement = Mathf.Abs(newX);
@@ -146,7 +146,7 @@ public class Ball : MonoBehaviour
         }
 
         // Apply speed changes
-        Rigidbody.linearVelocity = new Vector3(newX, currentVector.y, newZ);
+        rigidbody.linearVelocity = new Vector3(newX, currentVector.y, newZ);
     }
 
     /// <summary>

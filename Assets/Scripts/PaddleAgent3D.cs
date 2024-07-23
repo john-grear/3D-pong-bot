@@ -41,10 +41,10 @@ public class PaddleAgent3D : PaddleAgent
             _ => Vector3.zero
         };
 
-        Rigidbody.linearVelocity = directionToMove.normalized * speed;
+        rigidbody.linearVelocity = directionToMove.normalized * speed;
 
         // Penalize paddle for moving to incentivize efficient movement to hit the ball
-        if (Rigidbody.linearVelocity != Vector3.zero)
+        if (rigidbody.linearVelocity != Vector3.zero)
         {
             AddReward(-0.01f);
         }

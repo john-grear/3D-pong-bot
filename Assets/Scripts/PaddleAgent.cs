@@ -10,16 +10,16 @@ public class PaddleAgent : Agent
     public float speed;
     public float smoothingFactor = 3f;
 
-    [NonSerialized] public int Points;
-    [NonSerialized] public Vector3 StartingPosition;
+    [NonSerialized] public int points;
+    [NonSerialized] public Vector3 startingPosition;
 
-    protected Rigidbody Rigidbody;
-    protected GameManager GameManager;
-    protected bool IsAgent;
-    protected int BallLayer;
+    protected new Rigidbody rigidbody;
 
     private Ball _ball;
     private Goal _goal;
+    private GameManager _gameManager;
+    private bool _isAgent;
+    private int _ballLayer;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -27,22 +27,22 @@ public class PaddleAgent : Agent
     /// </remarks>
     private void Start()
     {
-        Rigidbody = GetComponent<Rigidbody>();
+        rigidbody = GetComponent<Rigidbody>();
 
         var paddleTransform = transform;
-        GameManager = paddleTransform.parent.GetComponent<GameManager>();
-        StartingPosition = paddleTransform.position;
+        _gameManager = paddleTransform.parent.GetComponent<GameManager>();
+        startingPosition = paddleTransform.position;
         speed *= paddleTransform.parent.localScale.x;
 
-        _ball = GameManager.ball;
-        BallLayer = LayerMask.NameToLayer("Ball");
-        _goal = GameManager.GetGoalForPlayer(this);
+        _ball = _gameManager.ball;
+        _ballLayer = LayerMask.NameToLayer("Ball");
+        _goal = _gameManager.GetGoalForPlayer(this);
 
         // Check agent is either in inference mode or it's in heuristic mode with a model set
         // Used to give different controls to player and agent
         var behaviorParameters = GetComponent<BehaviorParameters>();
-        IsAgent = !behaviorParameters.IsInHeuristicMode() ||
-                  (behaviorParameters.IsInHeuristicMode() && behaviorParameters.Model != null);
+        _isAgent = !behaviorParameters.IsInHeuristicMode() ||
+                   (behaviorParameters.IsInHeuristicMode() && behaviorParameters.Model != null);
     }
 
     /// <inheritdoc cref="CollectObservations"/>
@@ -61,14 +61,25 @@ public class PaddleAgent : Agent
         sensor.AddObservation(_goal.opposingPlayer.transform.position);
 
         // Current velocity
-        sensor.AddObservation(Rigidbody.linearVelocity);
+        sensor.AddObservation(rigidbody.linearVelocity);
 
         // Location of, velocity of, and distance to the ball
         var ballPosition = _ball.transform.position;
         sensor.AddObservation(ballPosition);
-        sensor.AddObservation(_ball.Rigidbody.linearVelocity);
-        var distanceToBall = Vector3.Distance(currentPosition, ballPosition);
-        sensor.AddObservation(distanceToBall);
+        sensor.AddObservation(_ball.rigidbody.linearVelocity);
+        // sensor.AddObservation(ballPosition - currentPosition);
+        // var distanceToBall = Vector3.Distance(currentPosition, ballPosition);
+        // sensor.AddObservation(distanceToBall);
+
+        // DID NOT WORK
+        // // Normalize the distance
+        // var normalizedDistance = Mathf.Clamp01(distanceToBall / 100.0f); // assuming 10 is the max relevant distance
+        //
+        // // Calculate reward based on distance (closer distance yields higher reward)
+        // var reward = Mathf.Max(0.01f * (1 - normalizedDistance), 0.0f);
+        //
+        // // Add the reward (with a cap of 0.01)
+        // AddReward(Mathf.Min(reward, 0.01f));
     }
 
     /// <inheritdoc cref="Heuristic"/>
@@ -97,11 +108,11 @@ public class PaddleAgent : Agent
     /// <param name="actions"></param>
     public override void OnActionReceived(ActionBuffers actions)
     {
-        if (GameManager.isGameOver) return;
+        if (_gameManager.isGameOver) return;
 
         var discreteActionsOut = actions.DiscreteActions;
 
-        if (IsAgent)
+        if (_isAgent)
         {
             // Agent plays with different controls and smoothing
             var targetVelocity = discreteActionsOut[0] switch
@@ -113,10 +124,10 @@ public class PaddleAgent : Agent
 
             // Smoothly transition to the target velocity
             var newVelocity = Vector3.Lerp(
-                Rigidbody.linearVelocity, targetVelocity, smoothingFactor * Time.deltaTime
+                rigidbody.linearVelocity, targetVelocity, smoothingFactor * Time.deltaTime
             );
 
-            Rigidbody.linearVelocity = newVelocity;
+            rigidbody.linearVelocity = newVelocity;
         }
         else
         {
@@ -127,7 +138,7 @@ public class PaddleAgent : Agent
                 _ => Vector3.zero
             };
 
-            Rigidbody.linearVelocity = newVelocity;
+            rigidbody.linearVelocity = newVelocity;
         }
     }
 
@@ -140,7 +151,7 @@ public class PaddleAgent : Agent
     /// </param>
     protected virtual void OnCollisionEnter(Collision other)
     {
-        if (!other.gameObject.layer.Equals(BallLayer)) return;
+        if (!other.gameObject.layer.Equals(_ballLayer)) return;
 
         var contactNormal = other.contacts[0].normal;
 
@@ -161,7 +172,7 @@ public class PaddleAgent : Agent
     /// </summary>
     public new void EndEpisode()
     {
-        transform.position = StartingPosition;
+        transform.position = startingPosition;
 
         base.EndEpisode();
     }
@@ -173,10 +184,10 @@ public class PaddleAgent : Agent
     public override void OnEpisodeBegin()
     {
         // Reset scoreboard
-        Points = 0;
-        GameManager.scoreboard.ResetText();
-        GameManager.gameOverText.gameObject.SetActive(false);
-        GameManager.playAgainButton.gameObject.SetActive(false);
+        points = 0;
+        _gameManager.scoreboard.ResetText();
+        _gameManager.gameOverText.gameObject.SetActive(false);
+        _gameManager.playAgainButton.gameObject.SetActive(false);
 
         if (!_ball) Start();
 
@@ -189,6 +200,8 @@ public class PaddleAgent : Agent
     /// </summary>
     public void AddPoint()
     {
-        Points++;
+        points++;
+        // AddReward(3f);
+        // _goal.opposingPlayer.AddReward(-3f);
     }
 }

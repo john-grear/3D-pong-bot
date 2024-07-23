@@ -5,7 +5,7 @@ public class SceneManager : MonoBehaviour
 {
     public GameObject title;
     public GameObject subtitle;
-    
+
     public GameObject playButton;
     public GameObject initialDifficultyButton;
     public GameObject initialSettingsSlider;
@@ -21,7 +21,7 @@ public class SceneManager : MonoBehaviour
     {
         // Deselect button
         EventSystem.current.SetSelectedGameObject(null);
-        
+
         // Toggle which buttons being displayed
         menuButtons.SetActive(!menuButtons.activeSelf);
         difficultyButtons.SetActive(!difficultyButtons.activeSelf);
@@ -37,7 +37,7 @@ public class SceneManager : MonoBehaviour
     {
         // Deselect button
         EventSystem.current.SetSelectedGameObject(null);
-        
+
         // Toggle which buttons being displayed
         menuButtons.SetActive(!menuButtons.activeSelf);
 
@@ -58,7 +58,7 @@ public class SceneManager : MonoBehaviour
         menuButtons.SetActive(false);
         difficultyButtons.SetActive(false);
     }
-    
+
     /// <summary>
     /// Stops the editor or quits the game.
     /// </summary>
