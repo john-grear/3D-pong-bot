@@ -33,9 +33,9 @@ public class Ball3D : Ball
         // Check speed limit and adjust appropriately
         base.CheckBallSpeedLimit();
 
-        var currentVector = Rigidbody.velocity;
+        var currentVector = Rigidbody.linearVelocity;
         var newY = currentVector.y;
-        var verticalMovement = Mathf.Abs(Rigidbody.velocity.y);
+        var verticalMovement = Mathf.Abs(Rigidbody.linearVelocity.y);
         
         var lowSpeed = speed * 0.9f;
         var highSpeed = speed * 1.1f;
@@ -47,6 +47,6 @@ public class Ball3D : Ball
             newY = Mathf.Sign(newY) * speed;
         }
 
-        Rigidbody.velocity = new Vector3(currentVector.x, newY, currentVector.z);
+        Rigidbody.linearVelocity = new Vector3(currentVector.x, newY, currentVector.z);
     }
 }

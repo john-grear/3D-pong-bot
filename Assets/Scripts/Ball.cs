@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -7,9 +8,9 @@ public class Ball : MonoBehaviour
     public float speed;
 
     [NonSerialized] public Rigidbody Rigidbody;
+    [NonSerialized] public Vector3 StartingPosition;
 
     private GameManager _gameManager;
-    private Vector3 _startingPosition;
     private int _goalLayer;
 
     /// <inheritdoc cref="Start"/>
@@ -20,7 +21,7 @@ public class Ball : MonoBehaviour
     {
         // Set starting position
         var ballTransform = transform;
-        _startingPosition = ballTransform.position;
+        StartingPosition = ballTransform.position;
         speed *= ballTransform.parent.localScale.x;
         Rigidbody = GetComponent<Rigidbody>();
         _gameManager = transform.parent.GetComponent<GameManager>();
@@ -35,7 +36,7 @@ public class Ball : MonoBehaviour
     /// </summary>
     public void Launch()
     {
-        Rigidbody.velocity = ChooseStartVector();
+        Rigidbody.linearVelocity = ChooseStartVector();
     }
 
     /// <summary>
@@ -81,18 +82,18 @@ public class Ball : MonoBehaviour
             // Give point
             _gameManager.AddPoint(player);
 
-            // If in real game, set timer before teleporting
-            // TODO: Set time before teleporting
-
             // Teleport back to starting location
-            transform.position = _startingPosition;
-            Rigidbody.velocity = Vector3.zero;
+            transform.position = StartingPosition;
+            Rigidbody.linearVelocity = Vector3.zero;
 
             // Check game over
             if (_gameManager.IsGameOver())
             {
                 return;
             }
+
+            // Set a countdown before launching ball again
+            if (!_gameManager.isTraining) StartCoroutine(CountdownToStartGame(3));
 
             // Launch ball again
             Launch();
@@ -117,7 +118,7 @@ public class Ball : MonoBehaviour
     protected virtual void CheckBallSpeedLimit()
     {
         // Check speed limit and adjust appropriately
-        var currentVector = Rigidbody.velocity;
+        var currentVector = Rigidbody.linearVelocity;
         var newX = currentVector.x;
         var newZ = currentVector.z;
         var sideMovement = Mathf.Abs(newX);
@@ -145,6 +146,31 @@ public class Ball : MonoBehaviour
         }
 
         // Apply speed changes
-        Rigidbody.velocity = new Vector3(newX, currentVector.y, newZ);
+        Rigidbody.linearVelocity = new Vector3(newX, currentVector.y, newZ);
+    }
+
+    /// <summary>
+    /// Start a countdown to resume the game using the scoreboard (TODO: Maybe another display later)
+    /// to display time left before game starts.
+    /// </summary>
+    /// <param name="countdown">
+    /// Seconds left before game starts.
+    /// </param>
+    /// <returns>
+    /// Normal delay for countdown.
+    /// </returns>
+    private IEnumerator CountdownToStartGame(int countdown)
+    {
+        // Update countdown display
+        _gameManager.scoreboard.scoreboard.text = countdown == 0 ? "Start!" : $"{countdown}";
+
+        // Wait one second
+        yield return new WaitForSeconds(1);
+
+        // If more time, keep waiting
+        if (--countdown > 0) yield return CountdownToStartGame(countdown);
+
+        _gameManager.scoreboard.UpdateText();
+        Launch();
     }
 }

@@ -11,6 +11,7 @@ public class PaddleAgent : Agent
     public float smoothingFactor = 3f;
 
     [NonSerialized] public int Points;
+    [NonSerialized] public Vector3 StartingPosition;
 
     protected Rigidbody Rigidbody;
     protected GameManager GameManager;
@@ -19,7 +20,6 @@ public class PaddleAgent : Agent
 
     private Ball _ball;
     private Goal _goal;
-    private Vector3 _startingPosition;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -31,7 +31,7 @@ public class PaddleAgent : Agent
 
         var paddleTransform = transform;
         GameManager = paddleTransform.parent.GetComponent<GameManager>();
-        _startingPosition = paddleTransform.position;
+        StartingPosition = paddleTransform.position;
         speed *= paddleTransform.parent.localScale.x;
 
         _ball = GameManager.ball;
@@ -61,12 +61,12 @@ public class PaddleAgent : Agent
         sensor.AddObservation(_goal.opposingPlayer.transform.position);
 
         // Current velocity
-        sensor.AddObservation(Rigidbody.velocity);
+        sensor.AddObservation(Rigidbody.linearVelocity);
 
         // Location of, velocity of, and distance to the ball
         var ballPosition = _ball.transform.position;
         sensor.AddObservation(ballPosition);
-        sensor.AddObservation(_ball.Rigidbody.velocity);
+        sensor.AddObservation(_ball.Rigidbody.linearVelocity);
         var distanceToBall = Vector3.Distance(currentPosition, ballPosition);
         sensor.AddObservation(distanceToBall);
     }
@@ -97,6 +97,8 @@ public class PaddleAgent : Agent
     /// <param name="actions"></param>
     public override void OnActionReceived(ActionBuffers actions)
     {
+        if (GameManager.isGameOver) return;
+
         var discreteActionsOut = actions.DiscreteActions;
 
         if (IsAgent)
@@ -111,10 +113,10 @@ public class PaddleAgent : Agent
 
             // Smoothly transition to the target velocity
             var newVelocity = Vector3.Lerp(
-                Rigidbody.velocity, targetVelocity, smoothingFactor * Time.deltaTime
+                Rigidbody.linearVelocity, targetVelocity, smoothingFactor * Time.deltaTime
             );
 
-            Rigidbody.velocity = newVelocity;
+            Rigidbody.linearVelocity = newVelocity;
         }
         else
         {
@@ -125,7 +127,7 @@ public class PaddleAgent : Agent
                 _ => Vector3.zero
             };
 
-            Rigidbody.velocity = newVelocity;
+            Rigidbody.linearVelocity = newVelocity;
         }
     }
 
@@ -159,7 +161,7 @@ public class PaddleAgent : Agent
     /// </summary>
     public new void EndEpisode()
     {
-        transform.position = _startingPosition;
+        transform.position = StartingPosition;
 
         base.EndEpisode();
     }
@@ -173,6 +175,8 @@ public class PaddleAgent : Agent
         // Reset scoreboard
         Points = 0;
         GameManager.scoreboard.ResetText();
+        GameManager.gameOverText.gameObject.SetActive(false);
+        GameManager.playAgainButton.gameObject.SetActive(false);
 
         if (!_ball) Start();
 
