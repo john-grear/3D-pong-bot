@@ -6,16 +6,6 @@ public class GameManager : MonoBehaviour
     public Scoreboard scoreboard;
     public Ball ball; // Used in PaddleAgent to access ball
 
-    /// <inheritdoc cref="Start"/>
-    /// <remarks>
-    /// Sets up starting values.
-    /// </remarks>
-    private void Start()
-    {
-        _player1 = player1Object.GetComponent<PaddleAgent>();
-        _player2 = player2Object.GetComponent<PaddleAgent>();
-    }
-
     /// <summary>
     /// Adds a point to the given player and updates the scoreboard.
     /// </summary>

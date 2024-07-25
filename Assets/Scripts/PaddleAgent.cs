@@ -67,8 +67,7 @@ public class PaddleAgent : Agent
         var ballPosition = _ball.transform.position;
         sensor.AddObservation(ballPosition);
         sensor.AddObservation(_ball.Rigidbody.velocity);
-        var distanceToBall = Vector3.Distance(currentPosition, ballPosition);
-        sensor.AddObservation(distanceToBall);
+        sensor.AddObservation(ballPosition - currentPosition);
     }
 
     /// <inheritdoc cref="Heuristic"/>

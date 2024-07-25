@@ -246,6 +246,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scoreboard: {fileID: 5773763664504449234}
   ball: {fileID: 7235615540884679259}
+  walls: []
 --- !u!1 &8175139673686911382
 GameObject:
   m_ObjectHideFlags: 0
@@ -623,7 +624,7 @@ PrefabInstance:
     - target: {fileID: 2785917012113235245, guid: 87641c55f788cf3428dd244fc7cb5a74, type: 3}
       propertyPath: m_Model
       value: 
-      objectReference: {fileID: 5022602860645237092, guid: 0d998f7a5ec91be44b10a107f85c7e37, type: 3}
+      objectReference: {fileID: 5022602860645237092, guid: 83d09df077b815846bba8bed540d4741, type: 3}
     - target: {fileID: 2874927271897815510, guid: 87641c55f788cf3428dd244fc7cb5a74, type: 3}
       propertyPath: m_LocalPosition.x
       value: 24
@@ -967,7 +968,7 @@ PrefabInstance:
     - target: {fileID: 2785917012113235245, guid: 87641c55f788cf3428dd244fc7cb5a74, type: 3}
       propertyPath: m_Model
       value: 
-      objectReference: {fileID: 5022602860645237092, guid: 0d998f7a5ec91be44b10a107f85c7e37, type: 3}
+      objectReference: {fileID: 5022602860645237092, guid: 83d09df077b815846bba8bed540d4741, type: 3}
     - target: {fileID: 2874927271897815510, guid: 87641c55f788cf3428dd244fc7cb5a74, type: 3}
       propertyPath: m_LocalPosition.x
       value: -24

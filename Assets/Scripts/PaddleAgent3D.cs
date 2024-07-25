@@ -12,10 +12,16 @@ public class PaddleAgent3D : PaddleAgent
     /// </param>
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        var continuousActionsOut = actionsOut.ContinuousActions;
+        base.Heuristic(actionsOut);
 
-        continuousActionsOut[0] = Input.GetAxisRaw("Vertical");
-        continuousActionsOut[1] = Input.GetAxisRaw("Horizontal");
+        var discreteActionsOut = actionsOut.DiscreteActions;
+
+        discreteActionsOut[1] = Input.GetAxisRaw("Horizontal") switch
+        {
+            > 0 => 1,
+            < 0 => -1,
+            _ => 0
+        };
     }
 
     /// <inheritdoc cref="OnActionReceived"/>
@@ -25,28 +31,62 @@ public class PaddleAgent3D : PaddleAgent
     /// <param name="actions"></param>
     public override void OnActionReceived(ActionBuffers actions)
     {
-        var continuousActionsOut = actions.ContinuousActions;
+        var discreteActionsOut = actions.DiscreteActions;
 
-        var directionToMove = continuousActionsOut[0] switch
+        if (IsAgent)
         {
-            > 0 => Vector3.up,
-            < 0 => Vector3.down,
-            _ => Vector3.zero
-        };
+            // Agent plays with different controls and smoothing
+            var targetVerticalVelocity = discreteActionsOut[0] switch
+            {
+                2 => Vector3.up * speed,
+                1 => Vector3.down * speed,
+                _ => Vector3.zero
+            };
 
-        directionToMove += continuousActionsOut[1] switch
-        {
-            > 0 => Vector3.forward,
-            < 0 => Vector3.back,
-            _ => Vector3.zero
-        };
+            // Agent plays with different controls and smoothing
+            var targetHorizontalVelocity = discreteActionsOut[1] switch
+            {
+                2 => Vector3.forward * speed,
+                1 => Vector3.back * speed,
+                _ => Vector3.zero
+            };
 
-        Rigidbody.velocity = directionToMove.normalized * speed;
+            var targetVelocity = targetVerticalVelocity + targetHorizontalVelocity;
 
-        // Penalize paddle for moving to incentivize efficient movement to hit the ball
-        if (Rigidbody.velocity != Vector3.zero)
-        {
-            AddReward(-0.01f);
+            // Smoothly transition to the target velocity
+            Rigidbody.velocity = Vector3.Lerp(
+                Rigidbody.velocity, targetVelocity, smoothingFactor * Time.deltaTime
+            );
         }
+        else
+        {
+            var newVerticalVelocity = discreteActionsOut[0] switch
+            {
+                1 => Vector3.up * speed,
+                -1 => Vector3.down * speed,
+                _ => Vector3.zero
+            };
+
+            var newHorizontalVelocity = discreteActionsOut[1] switch
+            {
+                1 => Vector3.forward * speed,
+                -1 => Vector3.back * speed,
+                _ => Vector3.zero
+            };
+
+            Rigidbody.velocity = newVerticalVelocity + newHorizontalVelocity;
+        }
+    }
+
+    /// <inheritdoc cref="OnCollisionEnter"/>
+    /// <remarks>
+    /// Override the OnCollisionEnter to remove the side hitting abuse from PaddleAgent.
+    /// </remarks>
+    /// <param name="other"></param>
+    protected override void OnCollisionEnter(Collision other)
+    {
+        if (!other.gameObject.layer.Equals(BallLayer)) return;
+
+        AddReward(1f);
     }
 }
