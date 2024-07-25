@@ -1,50 +1,62 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class SceneManager : MonoBehaviour
 {
-    public Button startButton;
-    public Button settingsButton;
-    public Button settingsQuitButton;
-    public Button quitButton;
+    public GameObject playButton;
+    public GameObject initialDifficultyButton;
+    public GameObject initialSettingsSlider;
+
+    public GameObject menuButtons;
+    public GameObject difficultyButtons;
     public GameObject settingsPanel;
 
-    /// <inheritdoc cref="Start"/>
-    /// <remarks>
-    /// Disables settings panel by default and adds functionality to main menu buttons.
-    /// </remarks>
-    private void Start()
+    /// <summary>
+    /// Toggles between displaying the difficulty buttons and the menu buttons.
+    /// </summary>
+    public void TogglePlayOptions()
     {
-        // Ensure settings panel is hidden at the start
-        settingsPanel.SetActive(false);
+        // Deselect button
+        EventSystem.current.SetSelectedGameObject(null);
+        
+        // Toggle which buttons being displayed
+        menuButtons.SetActive(!menuButtons.activeSelf);
+        difficultyButtons.SetActive(!difficultyButtons.activeSelf);
 
-        // Add listeners to buttons
-        startButton.onClick.AddListener(StartGame);
-        settingsButton.onClick.AddListener(ToggleSettingsPanel);
-        settingsQuitButton.onClick.AddListener(ToggleSettingsPanel);
-        quitButton.onClick.AddListener(QuitGame);
+        // Update selected button depending on which buttons being toggled
+        EventSystem.current.SetSelectedGameObject(menuButtons.activeSelf ? playButton : initialDifficultyButton);
     }
 
     /// <summary>
     /// Loads the scene to start the classic Pong game.
     /// </summary>
-    private static void StartGame()
+    public void StartGame()
     {
         UnityEngine.SceneManagement.SceneManager.LoadScene("Pong");
     }
 
     /// <summary>
-    /// Enables / disables the settings panel.
+    /// Enables / disables the settings panel, toggling menu buttons being displayed as well.
     /// </summary>
-    private void ToggleSettingsPanel()
+    public void ToggleSettingsPanel()
     {
+        // Deselect button
+        EventSystem.current.SetSelectedGameObject(null);
+        
+        // Toggle which buttons being displayed
+        menuButtons.SetActive(!menuButtons.activeSelf);
+
+        // Update selected button depending on if settings panel open or not
+        EventSystem.current.SetSelectedGameObject(settingsPanel.activeSelf ? playButton : initialSettingsSlider);
+
+        // Toggle settings panel after selecting button to not lose selected button
         settingsPanel.SetActive(!settingsPanel.activeSelf);
     }
 
     /// <summary>
     /// Stops the editor or quits the game.
     /// </summary>
-    private static void QuitGame()
+    public void QuitGame()
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
