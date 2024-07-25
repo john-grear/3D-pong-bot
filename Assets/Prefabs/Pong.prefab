@@ -246,7 +246,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scoreboard: {fileID: 5773763664504449234}
   ball: {fileID: 7235615540884679259}
-  walls: []
 --- !u!1 &8175139673686911382
 GameObject:
   m_ObjectHideFlags: 0
@@ -822,6 +821,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4439082147751978629}
     m_Modifications:
+    - target: {fileID: 449866108397289420, guid: 9cf992d429ee77141b4247544226dc67, type: 3}
+      propertyPath: speed
+      value: 100
+      objectReference: {fileID: 0}
     - target: {fileID: 2655603752540205755, guid: 9cf992d429ee77141b4247544226dc67, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
