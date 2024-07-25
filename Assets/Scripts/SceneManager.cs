@@ -49,6 +49,17 @@ public class SceneManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Enable the title, subtitle, and all buttons associated.
+    /// </summary>
+    public void EnableMenu()
+    {
+        title.SetActive(true);
+        subtitle.SetActive(true);
+        menuButtons.SetActive(true);
+        difficultyButtons.SetActive(true);
+    }
+
+    /// <summary>
     /// Disable the title, subtitle, and all buttons associated.
     /// </summary>
     public void DisableMenu()

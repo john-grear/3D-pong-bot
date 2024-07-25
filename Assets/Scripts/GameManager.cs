@@ -7,16 +7,21 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public Camera gameCamera;
-    public Vector3 cameraStartingPosition;
+    public Vector3 cameraGamePosition;
+
     public SceneManager sceneManager;
     public Scoreboard scoreboard;
     public TextMeshPro timer;
     public GameObject gameOverCanvas;
     public TextMeshPro gameOverText;
+
     public Ball ball; // Used in PaddleAgent to access ball
     public Difficulty difficulty;
     public bool isTraining;
     public bool isGameOver;
+
+    private Vector3 _cameraMenuPosition;
+    private Vector3 _cameraPositionToMoveTo;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -28,17 +33,18 @@ public class GameManager : MonoBehaviour
         gameOverCanvas.SetActive(false);
         timer.gameObject.SetActive(false);
         scoreboard.gameObject.SetActive(!isTraining);
+
+        _cameraMenuPosition = gameCamera.transform.position;
     }
 
     /// <summary>
-    /// Moves the camera in toward the game field, if not there already, as well as moving the paddles
-    /// and ball into their starting positions. This is all using LERP to get a smooth movement into
-    /// position before starting the countdown to start the game.
+    /// Moves the camera, ball, and paddles to their game starting positions smoothly using Vector3.MoveTowards
+    /// before starting the countdown to start the game.
     /// </summary>
     public void StartGame()
     {
         // Disable menu before starting game
-        sceneManager?.DisableMenu();
+        sceneManager.DisableMenu();
 
         // Enable scoreboard for non-training games
         scoreboard.gameObject.SetActive(true);
@@ -59,7 +65,11 @@ public class GameManager : MonoBehaviour
         // Stops ball from moving
         ball.StopMoving();
 
+        // Move camera, ball, and paddles into position
+        _cameraPositionToMoveTo = cameraGamePosition;
         StartCoroutine(MoveAllObjectsToStartPosition(player1, player2));
+
+        // Start game in 5 seconds
         StartCoroutine(CountdownToStartGame(5));
     }
 
@@ -75,15 +85,15 @@ public class GameManager : MonoBehaviour
         while (!(cameraInPosition && player1InPosition && player2InPosition && ballInPosition))
         {
             // Move each paddle, ball, and camera into position using LERP
-            if (!cameraInPosition) cameraInPosition = MoveIntoPosition(gameCamera.transform, cameraStartingPosition);
+            if (!cameraInPosition) cameraInPosition = MoveIntoPosition(gameCamera.transform, _cameraPositionToMoveTo);
             if (!player1InPosition) player1InPosition = MoveIntoPosition(player1.transform, player1.startingPosition);
             if (!player2InPosition) player2InPosition = MoveIntoPosition(player2.transform, player2.startingPosition);
             if (!ballInPosition) ballInPosition = MoveIntoPosition(ball.transform, ball.startingPosition);
-            
+
             yield return null; // Wait for the next frame
         }
     }
-    
+
     /// <summary>
     /// Slowly transition the given objectToMove to the given position over time.
     /// </summary>
@@ -138,11 +148,58 @@ public class GameManager : MonoBehaviour
             timer.text = "Start!";
             isGameOver = false;
             ball.Launch();
-            
+
             yield return new WaitForSeconds(1);
-            
+
             timer.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Moves the ball and paddles to their starting positions smoothly using Vector3.MoveTowards and moves the
+    /// camera to the menu position to display the menu correctly again.
+    /// </summary>
+    public void QuitToMainMenu()
+    {
+        // Disable game over text and buttons
+        gameOverCanvas.SetActive(false);
+        gameOverText.gameObject.SetActive(false);
+        
+        // Get players and reset points for both
+        var player1 = scoreboard.goal1.defendingPlayer;
+        var player2 = scoreboard.goal1.opposingPlayer;
+        
+        // Move camera, ball, and paddles into position
+        _cameraPositionToMoveTo = _cameraMenuPosition;
+        StartCoroutine(MoveAllObjectsToStartPosition(player1, player2));
+        
+        // Wait a couple seconds
+        StartCoroutine(CountdownToMainMenu());
+
+        // Disable scoreboard and enable all buttons and text for main menu
+        sceneManager.EnableMenu();
+        scoreboard.gameObject.SetActive(false);
+
+        // TODO: Set both players to hard AI
+        // var player1Behavior = player1.GetComponent<BehaviorParameters>();
+        // player1Behavior.Model = null;
+        // player1Behavior.BehaviorType = BehaviorType.HeuristicOnly;
+        // var player2Behavior = player1.GetComponent<BehaviorParameters>();
+        // player2Behavior.Model = null;
+        // player2Behavior.BehaviorType = BehaviorType.HeuristicOnly;
+
+        // Stops ball from moving
+        ball.StopMoving();
+    }
+
+    /// <summary>
+    /// Wait for a couple seconds before moving on to display the main menu.
+    /// </summary>
+    /// <returns></returns>
+    private static IEnumerator CountdownToMainMenu()
+    {
+        // Wait one second
+        yield return new WaitForSeconds(2);
     }
 
     /// <summary>
@@ -218,7 +275,7 @@ public class GameManager : MonoBehaviour
 
         // Only end episode of agents if training
         if (!isTraining) return true;
-        
+
         foreach (var playerGoal in goals)
             playerGoal.defendingPlayer.EndEpisode();
 
