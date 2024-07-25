@@ -28,7 +28,9 @@ public class PaddleAgent3D : PaddleAgent
     /// <remarks>
     /// Determines what to do when receiving actions.
     /// </remarks>
-    /// <param name="actions"></param>
+    /// <param name="actions">
+    /// Actions being input from the agent.
+    /// </param>
     public override void OnActionReceived(ActionBuffers actions)
     {
         var discreteActionsOut = actions.DiscreteActions;
@@ -54,8 +56,8 @@ public class PaddleAgent3D : PaddleAgent
             var targetVelocity = targetVerticalVelocity + targetHorizontalVelocity;
 
             // Smoothly transition to the target velocity
-            Rigidbody.velocity = Vector3.Lerp(
-                Rigidbody.velocity, targetVelocity, smoothingFactor * Time.deltaTime
+            Rigidbody.linearVelocity = Vector3.Lerp(
+                Rigidbody.linearVelocity, targetVelocity, smoothingFactor * Time.deltaTime
             );
         }
         else
@@ -74,19 +76,13 @@ public class PaddleAgent3D : PaddleAgent
                 _ => Vector3.zero
             };
 
-            Rigidbody.velocity = newVerticalVelocity + newHorizontalVelocity;
+            Rigidbody.linearVelocity = newVerticalVelocity + newHorizontalVelocity;
+
+            // Penalize paddle for moving to incentivize efficient movement to hit the ball
+            if (Rigidbody.linearVelocity != Vector3.zero)
+            {
+                AddReward(-0.01f);
+            }
         }
-    }
-
-    /// <inheritdoc cref="OnCollisionEnter"/>
-    /// <remarks>
-    /// Override the OnCollisionEnter to remove the side hitting abuse from PaddleAgent.
-    /// </remarks>
-    /// <param name="other"></param>
-    protected override void OnCollisionEnter(Collision other)
-    {
-        if (!other.gameObject.layer.Equals(BallLayer)) return;
-
-        AddReward(1f);
     }
 }

@@ -1,10 +1,214 @@
+using System.Collections;
 using System.Linq;
+using TMPro;
+using Unity.MLAgents.Policies;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+    public Camera gameCamera;
+    public Vector3 cameraGamePosition;
+
+    public SceneManager sceneManager;
     public Scoreboard scoreboard;
+    public TextMeshPro timer;
+    public GameObject gameOverCanvas;
+    public TextMeshPro gameOverText;
+
     public Ball ball; // Used in PaddleAgent to access ball
+    public Difficulty difficulty;
+    public bool isTraining;
+    public bool isGameOver;
+
+    private Vector3 _cameraMenuPosition;
+    private Vector3 _cameraPositionToMoveTo;
+
+    /// <inheritdoc cref="Start"/>
+    /// <remarks>
+    /// Disable canvas containing play again and quit buttons, game over text, the timer text, and scoreboard
+    /// so that all objects have a clear starting point to enable what is needed later.
+    /// </remarks>
+    private void Start()
+    {
+        gameOverCanvas.SetActive(false);
+        timer.gameObject.SetActive(false);
+        scoreboard.gameObject.SetActive(!isTraining);
+
+        _cameraMenuPosition = gameCamera.transform.position;
+    }
+
+    /// <summary>
+    /// Moves the camera, ball, and paddles to their game starting positions smoothly using Vector3.MoveTowards
+    /// before starting the countdown to start the game.
+    /// </summary>
+    public void StartGame()
+    {
+        // Disable menu before starting game
+        sceneManager.DisableMenu();
+
+        // Enable scoreboard for non-training games
+        scoreboard.gameObject.SetActive(true);
+        scoreboard.ResetText();
+        isTraining = false;
+
+        // Get players and reset points for both
+        var player1 = scoreboard.goal1.defendingPlayer;
+        var player2 = scoreboard.goal1.opposingPlayer;
+        player1.Points = 0;
+        player2.Points = 0;
+
+        // Set player 1 to be played by player, not CPU
+        var player1Behavior = player1.GetComponent<BehaviorParameters>();
+        player1Behavior.Model = null;
+        player1Behavior.BehaviorType = BehaviorType.HeuristicOnly;
+
+        // Stops ball from moving
+        ball.StopMoving();
+
+        // Move camera, ball, and paddles into position
+        _cameraPositionToMoveTo = cameraGamePosition;
+        StartCoroutine(MoveAllObjectsToStartPosition(player1, player2));
+
+        // Start game in 5 seconds
+        StartCoroutine(CountdownToStartGame(5));
+    }
+
+    /// <summary>
+    /// Moves the ball, paddles, and camera to their starting position. The camera will move to either the
+    /// starting or main menu position.
+    /// </summary>
+    /// <param name="player1">
+    /// Player 1 being moved into position.
+    /// </param>
+    /// <param name="player2">
+    /// Player 2 being moved into position.
+    /// </param>
+    /// <returns>
+    /// Null to iterate through each frame.
+    /// </returns>
+    private IEnumerator MoveAllObjectsToStartPosition(PaddleAgent player1, PaddleAgent player2)
+    {
+        bool cameraInPosition = false, player1InPosition = false, player2InPosition = false, ballInPosition = false;
+        while (!(cameraInPosition && player1InPosition && player2InPosition && ballInPosition))
+        {
+            // Move each paddle, ball, and camera into position using LERP
+            if (!cameraInPosition) cameraInPosition = MoveIntoPosition(gameCamera.transform, _cameraPositionToMoveTo);
+            if (!player1InPosition) player1InPosition = MoveIntoPosition(player1.transform, player1.StartingPosition);
+            if (!player2InPosition) player2InPosition = MoveIntoPosition(player2.transform, player2.StartingPosition);
+            if (!ballInPosition) ballInPosition = MoveIntoPosition(ball.transform, ball.StartingPosition);
+
+            yield return null; // Wait for the next frame
+        }
+    }
+
+    /// <summary>
+    /// Slowly transition the given objectToMove to the given position over time.
+    /// </summary>
+    /// <param name="objectToMove">
+    /// Transform of the object being moved into position.
+    /// </param>
+    /// <param name="position">
+    /// Where the objectToMove is being moved to.
+    /// </param>
+    /// <returns>
+    /// Whether the objectToMove is at the position after moving.
+    /// </returns>
+    private bool MoveIntoPosition(Transform objectToMove, Vector3 position)
+    {
+        // Move the object towards the position over time
+        var positionToMoveTo = Vector3.MoveTowards(
+            objectToMove.position, position, Time.deltaTime * transform.localScale.sqrMagnitude
+        );
+        objectToMove.position = positionToMoveTo;
+
+        // If too far away, return false to continue moving closer
+        if (Vector3.Distance(positionToMoveTo, position) > 0.01f) return false;
+
+        // Set objectToMove's position exactly if close enough to the given position
+        objectToMove.position = position;
+        return true;
+    }
+
+    /// <summary>
+    /// Start a countdown to start the game.
+    /// </summary>
+    /// <param name="countdown">
+    /// Seconds left before game starts.
+    /// </param>
+    /// <returns>
+    /// Normal delay for countdown.
+    /// </returns>
+    private IEnumerator CountdownToStartGame(int countdown)
+    {
+        // Update countdown display
+        timer.gameObject.SetActive(true);
+        timer.text = $"{countdown}";
+
+        // Wait one second
+        yield return new WaitForSeconds(1);
+
+        // If more time, keep waiting
+        if (--countdown > 0) yield return CountdownToStartGame(countdown);
+        else
+        {
+            timer.text = "Start!";
+            isGameOver = false;
+            ball.Launch();
+
+            yield return new WaitForSeconds(1);
+
+            timer.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Moves the ball and paddles to their starting positions smoothly using Vector3.MoveTowards and moves the
+    /// camera to the menu position to display the menu correctly again.
+    /// </summary>
+    public void QuitToMainMenu()
+    {
+        // Disable game over text and buttons
+        gameOverCanvas.SetActive(false);
+        gameOverText.gameObject.SetActive(false);
+        
+        // Get players and reset points for both
+        var player1 = scoreboard.goal1.defendingPlayer;
+        var player2 = scoreboard.goal1.opposingPlayer;
+        
+        // Move camera, ball, and paddles into position
+        _cameraPositionToMoveTo = _cameraMenuPosition;
+        StartCoroutine(MoveAllObjectsToStartPosition(player1, player2));
+        
+        // Wait a couple seconds
+        StartCoroutine(CountdownToMainMenu());
+
+        // Disable scoreboard and enable all buttons and text for main menu
+        sceneManager.EnableMenu();
+        scoreboard.gameObject.SetActive(false);
+
+        // TODO: Set both players to hard AI
+        // var player1Behavior = player1.GetComponent<BehaviorParameters>();
+        // player1Behavior.Model = null;
+        // player1Behavior.BehaviorType = BehaviorType.HeuristicOnly;
+        // var player2Behavior = player1.GetComponent<BehaviorParameters>();
+        // player2Behavior.Model = null;
+        // player2Behavior.BehaviorType = BehaviorType.HeuristicOnly;
+
+        // Stops ball from moving
+        ball.StopMoving();
+    }
+
+    /// <summary>
+    /// Wait for a couple seconds before moving on to display the main menu.
+    /// </summary>
+    /// <returns>
+    /// Normal delay for countdown.
+    /// </returns>
+    private static IEnumerator CountdownToMainMenu()
+    {
+        // Wait one second
+        yield return new WaitForSeconds(2);
+    }
 
     /// <summary>
     /// Adds a point to the given player and updates the scoreboard.
@@ -53,24 +257,35 @@ public class GameManager : MonoBehaviour
     /// <returns>
     /// Whether there is a winner or not.
     /// </returns>
-    private static bool DetermineWinner(params Goal[] goals)
+    private bool DetermineWinner(params Goal[] goals)
     {
-        var winner = (
-            from goal in goals
-            let player1 = goal.defendingPlayer
-            let player2 = goal.opposingPlayer
-            let pointDifference = player1.Points - player2.Points
-            where player1.Points >= 11 && pointDifference >= 2
-            select player1).FirstOrDefault();
+        var winnerIsPlayer1 = false;
+        PaddleAgent winner = null;
+        for (var i = 0; i < goals.Length; i++)
+        {
+            var goal = goals[i];
+            var player1 = goal.defendingPlayer;
+            var player2 = goal.opposingPlayer;
+            var pointDifference = player1.Points - player2.Points;
+            if (pointDifference < 2 || player1.Points < 11) continue;
+            winner = player1;
+            winnerIsPlayer1 = i == 0;
+        }
 
         if (winner == null) return false;
 
-        // TODO: Display winner text.
+        // Toggle Game Over status
+        isGameOver = true;
+
+        // Display winner / loser text and play again button
+        gameOverText.text = winnerIsPlayer1 ? "You Win!" : "You Lose!";
+        gameOverCanvas.SetActive(true);
+
+        // Only end episode of agents if training
+        if (!isTraining) return true;
 
         foreach (var playerGoal in goals)
-        {
             playerGoal.defendingPlayer.EndEpisode();
-        }
 
         return true;
     }

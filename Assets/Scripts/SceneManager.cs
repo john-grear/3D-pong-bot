@@ -3,6 +3,9 @@ using UnityEngine.EventSystems;
 
 public class SceneManager : MonoBehaviour
 {
+    public GameObject title;
+    public GameObject subtitle;
+
     public GameObject playButton;
     public GameObject initialDifficultyButton;
     public GameObject initialSettingsSlider;
@@ -18,7 +21,7 @@ public class SceneManager : MonoBehaviour
     {
         // Deselect button
         EventSystem.current.SetSelectedGameObject(null);
-        
+
         // Toggle which buttons being displayed
         menuButtons.SetActive(!menuButtons.activeSelf);
         difficultyButtons.SetActive(!difficultyButtons.activeSelf);
@@ -28,21 +31,13 @@ public class SceneManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads the scene to start the classic Pong game.
-    /// </summary>
-    public void StartGame()
-    {
-        UnityEngine.SceneManagement.SceneManager.LoadScene("Pong");
-    }
-
-    /// <summary>
     /// Enables / disables the settings panel, toggling menu buttons being displayed as well.
     /// </summary>
     public void ToggleSettingsPanel()
     {
         // Deselect button
         EventSystem.current.SetSelectedGameObject(null);
-        
+
         // Toggle which buttons being displayed
         menuButtons.SetActive(!menuButtons.activeSelf);
 
@@ -51,6 +46,28 @@ public class SceneManager : MonoBehaviour
 
         // Toggle settings panel after selecting button to not lose selected button
         settingsPanel.SetActive(!settingsPanel.activeSelf);
+    }
+
+    /// <summary>
+    /// Enable the title, subtitle, and all buttons associated.
+    /// </summary>
+    public void EnableMenu()
+    {
+        title.SetActive(true);
+        subtitle.SetActive(true);
+        menuButtons.SetActive(true);
+        difficultyButtons.SetActive(true);
+    }
+
+    /// <summary>
+    /// Disable the title, subtitle, and all buttons associated.
+    /// </summary>
+    public void DisableMenu()
+    {
+        title.SetActive(false);
+        subtitle.SetActive(false);
+        menuButtons.SetActive(false);
+        difficultyButtons.SetActive(false);
     }
 
     /// <summary>

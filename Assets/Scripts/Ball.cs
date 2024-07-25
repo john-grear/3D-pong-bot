@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -7,10 +8,11 @@ public class Ball : MonoBehaviour
     public float speed;
 
     [NonSerialized] public Rigidbody Rigidbody;
+    [NonSerialized] public Vector3 StartingPosition;
 
     private GameManager _gameManager;
-    private Vector3 _startingPosition;
     private int _goalLayer;
+    private bool _scored;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -20,7 +22,7 @@ public class Ball : MonoBehaviour
     {
         // Set starting position
         var ballTransform = transform;
-        _startingPosition = ballTransform.position;
+        StartingPosition = ballTransform.position;
         speed *= ballTransform.parent.localScale.x;
         Rigidbody = GetComponent<Rigidbody>();
         _gameManager = transform.parent.GetComponent<GameManager>();
@@ -35,7 +37,16 @@ public class Ball : MonoBehaviour
     /// </summary>
     public void Launch()
     {
-        Rigidbody.velocity = ChooseStartVector();
+        _scored = false;
+        Rigidbody.linearVelocity = ChooseStartVector();
+    }
+
+    /// <summary>
+    /// Sets the linear velocity of the ball to zero to wait for game to begin.
+    /// </summary>
+    public void StopMoving()
+    {
+        Rigidbody.linearVelocity = Vector3.zero;
     }
 
     /// <summary>
@@ -68,47 +79,60 @@ public class Ball : MonoBehaviour
     /// </param>
     protected virtual void OnCollisionEnter(Collision other)
     {
+        // Prevent collisions with goal and something else from messing with launch functionality
+        if (_scored) return;
+        
         var collidingObject = other.gameObject;
         var collidingLayer = collidingObject.layer;
 
-        // Check colliding with Goal
-        if (collidingLayer.Equals(_goalLayer))
-        {
-            // Gets the opposing player to score a point for them
-            var goal = collidingObject.GetComponent<Goal>();
-            var player = goal.opposingPlayer;
-
-            // Give point
-            _gameManager.AddPoint(player);
-
-            // If in real game, set timer before teleporting
-            // TODO: Set time before teleporting
-
-            // Teleport back to starting location
-            transform.position = _startingPosition;
-            Rigidbody.velocity = Vector3.zero;
-
-            // Check game over
-            if (_gameManager.IsGameOver())
-            {
-                return;
-            }
-
-            // Launch ball again
-            Launch();
-            return;
-        }
-
         CheckBallSpeedLimit();
+
+        // Check colliding with Goal
+        if (!collidingLayer.Equals(_goalLayer)) return;
+
+        // Gets the opposing player to score a point for them
+        var goal = collidingObject.GetComponent<Goal>();
+        var player = goal.opposingPlayer;
+
+        // Give point
+        _gameManager.AddPoint(player);
+
+        // Teleport back to starting location and stop the ball from moving
+        transform.position = StartingPosition;
+        if (!_gameManager.isTraining) StopMoving();
     }
 
     /// <inheritdoc cref="OnCollisionExit"/>
     /// <remarks>
     /// Checks the speed limit of the ball before exiting a collision.
     /// </remarks>
-    protected void OnCollisionExit()
+    /// <param name="other">
+    /// Collision object that is used to determine what happens with the ball.
+    /// </param>
+    protected void OnCollisionExit(Collision other)
     {
+        // Prevent collisions with goal and something else from messing with launch functionality
+        if (_scored) return;
+        
+        var collidingObject = other.gameObject;
+        var collidingLayer = collidingObject.layer;
+
         CheckBallSpeedLimit();
+
+        // Check colliding with Goal
+        if (!collidingLayer.Equals(_goalLayer)) return;
+
+        // Disable collision functionality since ball has scored a goal
+        _scored = true;
+        
+        StopMoving();
+
+        // Check game over
+        if (_gameManager.IsGameOver()) return;
+
+        // Launch ball again immediately if training, else start a 3 second cooldown before launching again
+        if (_gameManager.isTraining) Launch();
+        else StartCoroutine(CountdownToStartGame(3));
     }
 
     /// <summary>
@@ -117,7 +141,7 @@ public class Ball : MonoBehaviour
     protected virtual void CheckBallSpeedLimit()
     {
         // Check speed limit and adjust appropriately
-        var currentVector = Rigidbody.velocity;
+        var currentVector = Rigidbody.linearVelocity;
         var newX = currentVector.x;
         var newZ = currentVector.z;
         var sideMovement = Mathf.Abs(newX);
@@ -145,6 +169,33 @@ public class Ball : MonoBehaviour
         }
 
         // Apply speed changes
-        Rigidbody.velocity = new Vector3(newX, currentVector.y, newZ);
+        Rigidbody.linearVelocity = new Vector3(newX, currentVector.y, newZ);
+    }
+
+    /// <summary>
+    /// Start a countdown to resume the game.
+    /// </summary>
+    /// <param name="countdown">
+    /// Seconds left before game starts.
+    /// </param>
+    /// <returns>
+    /// Normal delay for countdown.
+    /// </returns>
+    private IEnumerator CountdownToStartGame(int countdown)
+    {
+        // Update countdown display
+        _gameManager.timer.gameObject.SetActive(true);
+        _gameManager.timer.text = countdown == 0 ? "Start!" : $"{countdown}";
+
+        // Wait one second
+        yield return new WaitForSeconds(1);
+
+        // If more time, keep waiting
+        if (--countdown > 0) yield return CountdownToStartGame(countdown);
+        else
+        {
+            _gameManager.timer.gameObject.SetActive(false);
+            Launch();
+        }
     }
 }
