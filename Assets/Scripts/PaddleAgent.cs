@@ -67,19 +67,6 @@ public class PaddleAgent : Agent
         var ballPosition = _ball.transform.position;
         sensor.AddObservation(ballPosition);
         sensor.AddObservation(_ball.rigidbody.linearVelocity);
-        // sensor.AddObservation(ballPosition - currentPosition);
-        // var distanceToBall = Vector3.Distance(currentPosition, ballPosition);
-        // sensor.AddObservation(distanceToBall);
-
-        // DID NOT WORK
-        // // Normalize the distance
-        // var normalizedDistance = Mathf.Clamp01(distanceToBall / 100.0f); // assuming 10 is the max relevant distance
-        //
-        // // Calculate reward based on distance (closer distance yields higher reward)
-        // var reward = Mathf.Max(0.01f * (1 - normalizedDistance), 0.0f);
-        //
-        // // Add the reward (with a cap of 0.01)
-        // AddReward(Mathf.Min(reward, 0.01f));
     }
 
     /// <inheritdoc cref="Heuristic"/>
@@ -186,13 +173,7 @@ public class PaddleAgent : Agent
         // Reset scoreboard
         points = 0;
         _gameManager.scoreboard.ResetText();
-        _gameManager.gameOverText.gameObject.SetActive(false);
-        _gameManager.playAgainButton.gameObject.SetActive(false);
-
-        if (!_ball) Start();
-
-        // Launch the ball
-        _ball.Launch();
+        _gameManager.gameOverCanvas.SetActive(false);
     }
 
     /// <summary>
@@ -201,7 +182,5 @@ public class PaddleAgent : Agent
     public void AddPoint()
     {
         points++;
-        // AddReward(3f);
-        // _goal.opposingPlayer.AddReward(-3f);
     }
 }

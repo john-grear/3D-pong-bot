@@ -12,6 +12,7 @@ public class Ball : MonoBehaviour
 
     private GameManager _gameManager;
     private int _goalLayer;
+    private bool _scored;
 
     /// <inheritdoc cref="Start"/>
     /// <remarks>
@@ -36,7 +37,16 @@ public class Ball : MonoBehaviour
     /// </summary>
     public void Launch()
     {
+        _scored = false;
         rigidbody.linearVelocity = ChooseStartVector();
+    }
+
+    /// <summary>
+    /// Sets the linear velocity of the ball to zero to wait for game to begin.
+    /// </summary>
+    public void StopMoving()
+    {
+        rigidbody.linearVelocity = Vector3.zero;
     }
 
     /// <summary>
@@ -69,47 +79,60 @@ public class Ball : MonoBehaviour
     /// </param>
     protected virtual void OnCollisionEnter(Collision other)
     {
+        // Prevent collisions with goal and something else from messing with launch functionality
+        if (_scored) return;
+        
         var collidingObject = other.gameObject;
         var collidingLayer = collidingObject.layer;
 
-        // Check colliding with Goal
-        if (collidingLayer.Equals(_goalLayer))
-        {
-            // Gets the opposing player to score a point for them
-            var goal = collidingObject.GetComponent<Goal>();
-            var player = goal.opposingPlayer;
-
-            // Give point
-            _gameManager.AddPoint(player);
-
-            // Teleport back to starting location
-            transform.position = startingPosition;
-            rigidbody.linearVelocity = Vector3.zero;
-
-            // Check game over
-            if (_gameManager.IsGameOver())
-            {
-                return;
-            }
-
-            // Set a countdown before launching ball again
-            if (!_gameManager.isTraining) StartCoroutine(CountdownToStartGame(3));
-
-            // Launch ball again
-            Launch();
-            return;
-        }
-
         CheckBallSpeedLimit();
+
+        // Check colliding with Goal
+        if (!collidingLayer.Equals(_goalLayer)) return;
+
+        // Gets the opposing player to score a point for them
+        var goal = collidingObject.GetComponent<Goal>();
+        var player = goal.opposingPlayer;
+
+        // Give point
+        _gameManager.AddPoint(player);
+
+        // Teleport back to starting location and stop the ball from moving
+        transform.position = startingPosition;
+        if (!_gameManager.isTraining) StopMoving();
     }
 
     /// <inheritdoc cref="OnCollisionExit"/>
     /// <remarks>
     /// Checks the speed limit of the ball before exiting a collision.
     /// </remarks>
-    protected void OnCollisionExit()
+    /// <param name="other">
+    /// Collision object that is used to determine what happens with the ball.
+    /// </param>
+    protected void OnCollisionExit(Collision other)
     {
+        // Prevent collisions with goal and something else from messing with launch functionality
+        if (_scored) return;
+        
+        var collidingObject = other.gameObject;
+        var collidingLayer = collidingObject.layer;
+
         CheckBallSpeedLimit();
+
+        // Check colliding with Goal
+        if (!collidingLayer.Equals(_goalLayer)) return;
+
+        // Disable collision functionality since ball has scored a goal
+        _scored = true;
+        
+        StopMoving();
+
+        // Check game over
+        if (_gameManager.IsGameOver()) return;
+
+        // Launch ball again immediately if training, else start a 3 second cooldown before launching again
+        if (_gameManager.isTraining) Launch();
+        else StartCoroutine(CountdownToStartGame(3));
     }
 
     /// <summary>
@@ -162,15 +185,18 @@ public class Ball : MonoBehaviour
     private IEnumerator CountdownToStartGame(int countdown)
     {
         // Update countdown display
-        _gameManager.scoreboard.scoreboard.text = countdown == 0 ? "Start!" : $"{countdown}";
+        _gameManager.timer.gameObject.SetActive(true);
+        _gameManager.timer.text = countdown == 0 ? "Start!" : $"{countdown}";
 
         // Wait one second
         yield return new WaitForSeconds(1);
 
         // If more time, keep waiting
         if (--countdown > 0) yield return CountdownToStartGame(countdown);
-
-        _gameManager.scoreboard.UpdateText();
-        Launch();
+        else
+        {
+            _gameManager.timer.gameObject.SetActive(false);
+            Launch();
+        }
     }
 }
